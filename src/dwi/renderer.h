@@ -28,7 +28,7 @@
 #define __dwi_renderer_h__
 
 #include "math/matrix.h"
-#include "math/SH.h"
+#include "dwi/SH.h"
 #include "use_gl.h"
 
 namespace MR {
@@ -40,11 +40,11 @@ namespace MR {
         Renderer () : lmax_computed (0), lod_computed (0), nsh (0), row_size (0) { }
         ~Renderer () { clear(); }
 
-        void calculate (const std::vector<float>& values, int lmax = INT_MAX, bool hide_neg_lobes = true);
+        void calculate (const std::vector<float>& values, int lmax = G_MAXINT, bool hide_neg_lobes = true);
         void precompute (int lmax, int lod, Glib::RefPtr<Gdk::Window> window = Glib::RefPtr<Gdk::Window>());
         void draw (bool use_normals, const float* colour = NULL) const;
 
-        uint size () const { return (rows.size()); }
+        guint size () const { return (rows.size()); }
         bool empty () const { return (rows.empty()); }
 
       protected:
@@ -58,9 +58,9 @@ namespace MR {
         class Triangle {
           public:
             Triangle () { } 
-            Triangle (uint i1, uint i2, uint i3) { index[0] = i1; index[1] = i2; index[2] = i3; }
-            void set (uint i1, uint i2, uint i3) { index[0] = i1; index[1] = i2; index[2] = i3; }
-            uint& operator[] (int n) { return (index[n]); }
+            Triangle (guint i1, guint i2, guint i3) { index[0] = i1; index[1] = i2; index[2] = i3; }
+            void set (guint i1, guint i2, guint i3) { index[0] = i1; index[1] = i2; index[2] = i3; }
+            guint& operator[] (int n) { return (index[n]); }
           protected:
             GLuint  index[3];
         };
@@ -68,11 +68,11 @@ namespace MR {
         class Edge {
           public:
             Edge (const Edge& E) { set (E.i1, E.i2); }
-            Edge (uint a, uint b) { set (a,b); }
+            Edge (guint a, guint b) { set (a,b); }
             bool operator< (const Edge& E) const { return (i1 < E.i1 ? true : i2 < E.i2); }
-            void set (uint a, uint b) { if (a < b) { i1 = a; i2 = b; } else { i1 = b; i2 = a; } }
-            uint i1;
-            uint i2;
+            void set (guint a, guint b) { if (a < b) { i1 = a; i2 = b; } else { i1 = b; i2 = a; } }
+            guint i1;
+            guint i2;
         };
 
         void clear () { for (std::vector<GLfloat*>::iterator i = rows.begin(); i != rows.end(); ++i) delete [] *i; rows.clear(); }
@@ -90,7 +90,7 @@ namespace MR {
           return (row);
         }
 
-        GLfloat* push_back (uint i1, uint i2) { 
+        GLfloat* push_back (guint i1, guint i2) { 
           GLfloat* row = new GLfloat [row_size];
           const GLfloat* p1 (rows[i1]);
           const GLfloat* p2 (rows[i2]);
@@ -106,7 +106,7 @@ namespace MR {
         std::vector<GLfloat*> rows;
 
         int    lmax_computed, lod_computed;
-        uint  nsh, row_size;
+        guint  nsh, row_size;
         void   precompute_row (GLfloat* row); 
     };
 

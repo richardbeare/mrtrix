@@ -51,43 +51,43 @@ namespace MR {
 
       class Element {
         protected:
-          static UnorderedMap<uint32_t, const char*>::Type dict;
+          static UnorderedMap<guint32, const gchar*>::Type dict;
           static void           init_dict();
 
           File::MMap            fmap;
           void                  set_explicit_encoding();
           bool                  read_GR_EL();
 
-          uint8_t*               next;
-          uint8_t*               start;
+          guint8*               next;
+          guint8*               start;
           bool                  is_explicit;
           bool                  is_BE;
           bool                  previous_BO_was_BE;
 
-          std::vector<uint8_t*>  end_seq;
+          std::vector<guint8*>  end_seq;
 
         public:
 
-          uint16_t               group, element, VR;
-          uint32_t               size;
-          uint8_t*               data;
+          guint16               group, element, VR;
+          guint32               size;
+          guint8*               data;
 
-          std::vector<uint>    item_number;
+          std::vector<guint>    item_number;
 
-          void                  set (const std::string& filename);
+          void                  set (const String& filename);
           bool                  read ();
 
-          bool                  is (uint16_t group, uint16_t element) const;
+          bool                  is (guint16 group, guint16 element) const;
 
-          std::string                tag_name () const;
-          uint32_t               tag () const;
+          String                tag_name () const;
+          guint32               tag () const;
           ElementType           type () const;
           bool                  is_big_endian () const;
-          std::vector<int32_t>   get_int () const;
-          std::vector<uint32_t>  get_uint () const;
+          std::vector<gint32>   get_int () const;
+          std::vector<guint32>  get_uint () const;
           std::vector<double>   get_float () const;
-          std::vector<std::string>   get_string () const;
-          uint                 offset (uint8_t* address) const;
+          std::vector<String>   get_string () const;
+          guint                 offset (guint8* address) const;
 
           void                  print () const;
 
@@ -112,7 +112,7 @@ namespace MR {
 
 
 
-      inline bool Element::is (uint16_t Group, uint16_t Element) const
+      inline bool Element::is (guint16 Group, guint16 Element) const
       {
         if (group != Group) return (false);
         return (element == Element);
@@ -127,10 +127,10 @@ namespace MR {
 
 
 
-      inline uint32_t Element::tag () const
+      inline guint32 Element::tag () const
       {
-        union __DICOM_group_element_pair__ { uint16_t s[2]; uint32_t i; } val = { {
-#ifdef BYTE_ORDER_BIG_ENDIAN
+        union __DICOM_group_element_pair__ { guint16 s[2]; guint32 i; } val = { {
+#if G_BYTE_ORDER == G_BIG_ENDIAN
           group, element
 #else
             element, group
@@ -143,10 +143,10 @@ namespace MR {
 
 
 
-      inline std::string Element::tag_name() const
+      inline String Element::tag_name() const
       {
         if (dict.empty()) init_dict();
-        const char* s = dict[tag()];
+        const gchar* s = dict[tag()];
         return (s ? s : "");
       }
 
@@ -154,7 +154,7 @@ namespace MR {
 
 
 
-      inline uint Element::offset (uint8_t* address) const { return (address - (uint8_t*) fmap.address()); }
+      inline guint Element::offset (guint8* address) const { return (address - (guint8*) fmap.address()); }
 
 
 

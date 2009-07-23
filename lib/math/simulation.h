@@ -36,13 +36,13 @@ namespace MR {
         gsl_rng* generator;
 
       public:
-        RNG ()               { generator = gsl_rng_alloc (gsl_rng_mt19937); gsl_rng_set (generator, time (NULL)); }
-        RNG (uint seed)      { generator = gsl_rng_alloc (gsl_rng_mt19937); gsl_rng_set (generator, seed); }
-        ~RNG ()              { gsl_rng_free (generator); }
+        RNG ()                { generator = gsl_rng_alloc (gsl_rng_mt19937); gsl_rng_set (generator, time (NULL)); }
+        RNG (guint seed)      { generator = gsl_rng_alloc (gsl_rng_mt19937); gsl_rng_set (generator, seed); }
+        ~RNG ()               { gsl_rng_free (generator); }
 
 
 
-        void      set_seed (uint seed)            { gsl_rng_set (generator, seed); }
+        void      set_seed (guint seed)            { gsl_rng_set (generator, seed); }
 
 
         gsl_rng*  operator() ()                    { return (generator); }
@@ -56,7 +56,7 @@ namespace MR {
           return (sqrt (amplitude*amplitude + imag*imag));
         }
 
-        template <typename T> void shuffle (VectorView<T>& V) { gsl_ran_shuffle (generator, (&V)->data, V.size(), sizeof (T)); }
+        void      shuffle (Vector& V) { gsl_ran_shuffle (generator, V.get_gsl_vector()->data, V.size(), sizeof (double)); }
         template <class T> void shuffle (std::vector<T>& V) { gsl_ran_shuffle (generator, &V[0], V.size(), sizeof (T)); }
     };
 

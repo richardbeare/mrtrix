@@ -30,10 +30,9 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
+#include "image/position.h"
 #include "image/axis.h"
-#include "image/misc.h"
+#include "math/linalg.h"
 
 using namespace std; 
 using namespace MR; 
@@ -53,15 +52,15 @@ ARGUMENTS = {
 };
 
 
-const char* type_choices[] = { "REAL", "IMAG", "MAG", "PHASE", "COMPLEX", NULL };
-const char* data_type_choices[] = { "FLOAT32", "FLOAT32LE", "FLOAT32BE", "FLOAT64", "FLOAT64LE", "FLOAT64BE", 
+const gchar* type_choices[] = { "REAL", "IMAG", "MAG", "PHASE", "COMPLEX", NULL };
+const gchar* data_type_choices[] = { "FLOAT32", "FLOAT32LE", "FLOAT32BE", "FLOAT64", "FLOAT64LE", "FLOAT64BE", 
     "INT32", "UINT32", "INT32LE", "UINT32LE", "INT32BE", "UINT32BE", 
     "INT16", "UINT16", "INT16LE", "UINT16LE", "INT16BE", "UINT16BE", 
     "CFLOAT32", "CFLOAT32LE", "CFLOAT32BE", "CFLOAT64", "CFLOAT64LE", "CFLOAT64BE", 
     "INT8", "UINT8", "BIT", NULL };
 
 OPTIONS = {
-  Option ("coord", "select coordinates", "extract data only at the coordinates specified.", Optional | AllowMultiple)
+  Option ("coord", "select coordinates", "extract data only at the coordinates specified.", false, true)
     .append (Argument ("axis", "axis", "the axis of interest").type_integer (0, INT_MAX, 0))
     .append (Argument ("coord", "coordinates", "the coordinates of interest").type_sequence_int()),
 
@@ -94,17 +93,15 @@ OPTIONS = {
 
 
 
-inline bool next (Image::Voxel& ref, Image::Voxel& other, const std::vector<int>* pos)
+inline bool next (Image::Position& ref, Image::Position& other, const std::vector<int>* pos)
 {
-  size_t axis = 0;
+  int axis = 0;
   do {
-    ref[axis]++;
-    if (ref[axis] < ref.dim(axis)) {
-      other[axis] = pos[axis][ref[axis]];
-      return (true);
-    }
-    ref[axis] = 0;
-    other[axis] = pos[axis][0];
+    ref.inc (axis);
+    other.set (axis, pos[axis][ref[axis]]);
+    if (ref[axis] < ref.dim(axis)) return (true);
+    ref.set (axis, 0);
+    other.set (axis, pos[axis][0]);
     axis++;
   } while (axis < ref.ndim());
   return (false);
@@ -119,6 +116,7 @@ EXECUTE {
   std::vector<float> vox;
   if (opt.size()) 
     vox = parse_floats (opt[0][0].get_string());
+
 
   opt = get_options (3); // scale
   float scale = 1.0;
@@ -163,25 +161,25 @@ EXECUTE {
   opt = get_options (2); // datatype
   if (opt.size()) header.data_type.parse (data_type_choices[opt[0][0].get_int()]);
 
-  for (size_t n = 0; n < vox.size(); n++) 
-    if (isfinite (vox[n])) header.axes[n].vox = vox[n];
+  for (guint n = 0; n < vox.size(); n++) 
+    if (isfinite (vox[n])) header.axes.vox[n] = vox[n];
 
   opt = get_options (7); // layout
   if (opt.size()) {
-    std::vector<Image::Order> ax = parse_axes_specifier (header.axes, opt[0][0].get_string());
-    if (ax.size() != header.axes.size()) 
-      throw Exception (std::string("specified layout \"") + opt[0][0].get_string() + "\" does not match image dimensions");
+    std::vector<Image::Axis> ax = parse_axes_specifier (header.axes, opt[0][0].get_string());
+    if (ax.size() != (guint) header.axes.ndim()) 
+      throw Exception (String("specified layout \"") + opt[0][0].get_string() + "\" does not match image dimensions");
 
-    for (size_t i = 0; i < ax.size(); i++) {
-      header.axes[i].order = ax[i].order;
-      header.axes[i].forward = ax[i].forward;
+    for (guint i = 0; i < ax.size(); i++) {
+      header.axes.axis[i] = ax[i].axis;
+      header.axes.forward[i] = ax[i].forward;
     }
   }
 
 
   opt = get_options (8); // prs
   if (opt.size() && header.DW_scheme.rows() && header.DW_scheme.columns()) {
-    for (size_t row = 0; row < header.DW_scheme.rows(); row++) {
+    for (guint row = 0; row < header.DW_scheme.rows(); row++) {
       double tmp = header.DW_scheme(row, 0);
       header.DW_scheme(row, 0) = header.DW_scheme(row, 1);
       header.DW_scheme(row, 1) = tmp;
@@ -192,17 +190,17 @@ EXECUTE {
   std::vector<int> pos[in_obj.ndim()];
 
   opt = get_options (0); // coord
-  for (size_t n = 0; n < opt.size(); n++) {
+  for (guint n = 0; n < opt.size(); n++) {
     int axis = opt[n][0].get_int();
     if (pos[axis].size()) throw Exception ("\"coord\" option specified twice for axis " + str (axis));
     pos[axis] = parse_ints (opt[n][1].get_string());
-    header.axes[axis].dim = pos[axis].size();
+    header.axes.dim[axis] = pos[axis].size();
   }
 
-  for (size_t n = 0; n < in_obj.ndim(); n++) {
+  for (int n = 0; n < in_obj.ndim(); n++) {
     if (pos[n].empty()) { 
       pos[n].resize (in_obj.dim(n));
-      for (size_t i = 0; i < pos[n].size(); i++) pos[n][i] = i;
+      for (guint i = 0; i < pos[n].size(); i++) pos[n][i] = i;
     }
   }
 
@@ -214,26 +212,23 @@ EXECUTE {
 
 
 
-  Image::Voxel in (in_obj);
-  Image::Voxel out (*argument[1].get_image (header));
+  Image::Position in (in_obj);
+  Image::Position out (*argument[1].get_image (header));
 
-  in.image.map();
-  out.image.map();
+  for (int n = 0; n < in.ndim(); n++) in.set (n, pos[n][0]);
 
-  for (size_t n = 0; n < in.ndim(); n++) in[n] = pos[n][0];
-
-  ProgressBar::init (voxel_count (out), "copying data...");
+  ProgressBar::init (out.voxel_count(), "copying data...");
 
   do { 
 
     float re, im = 0.0;
-    value (in, output_type, re, im);
-    if (replace_NaN) if (isnan (re)) re = 0.0;
-    out.real() = re;
+    in.get (output_type, re, im);
+    if (replace_NaN) if (gsl_isnan (re)) re = 0.0;
+    out.re (re);
 
     if (output_type == Image::RealImag) {
-      if (replace_NaN) if (isnan (im)) im = 0.0;
-      out.imag() = im;
+      if (replace_NaN) if (gsl_isnan (im)) im = 0.0;
+      out.im (im);
     }
 
     ProgressBar::inc();

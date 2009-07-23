@@ -23,8 +23,8 @@
 #ifndef __dwi_tractography_tracker_sd_stream_h__
 #define __dwi_tractography_tracker_sd_stream_h__
 
-#include "math/SH.h"
 #include "dwi/tractography/tracker/base.h"
+#include "math/linalg.h"
 
 namespace MR {
   namespace DWI {
@@ -38,7 +38,6 @@ namespace MR {
           protected:
             int   lmax;
             bool  precomputed;
-            Math::SH::PrecomputedAL<float>*  precomputer;
 
             virtual bool  init_direction (const Point& seed_dir);
             virtual bool  next_point ();

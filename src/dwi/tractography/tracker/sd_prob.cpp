@@ -21,6 +21,7 @@
 */
 
 #include "dwi/tractography/tracker/sd_prob.h"
+#include "dwi/SH.h"
 
 namespace MR {
   namespace DWI {
@@ -30,10 +31,9 @@ namespace MR {
 
         SDProb::SDProb (Image::Object& source_image, Properties& properties) : 
           Base (source_image, properties),
-          lmax (Math::SH::LforN (source.dim(3))),
+          lmax (SH::LforN (source.dim(3))),
           max_trials (50),
-          precomputed (true),
-          precomputer (NULL)
+          precomputed (true)
         {
           float min_curv = 1.0; 
           properties["method"] = "SD_PROB";
@@ -43,9 +43,9 @@ namespace MR {
           if (props["lmax"].empty()) props["lmax"] = str (lmax); else lmax = to<int> (props["lmax"]);
           if (props["max_trials"].empty()) props["max_trials"] = str (max_trials); else max_trials = to<int> (props["max_trials"]);
           if (props["sh_precomputed"].empty()) props["sh_precomputed"] = ( precomputed ? "1" : "0" ); else precomputed = to<int> (props["sh_precomputed"]);
-          if (precomputed) precomputer = new Math::SH::PrecomputedAL<float> (lmax, 256);
 
           dist_spread = curv2angle (step_size, min_curv);
+          if (precomputed) SH::precompute (lmax);
         }
 
 
@@ -61,18 +61,20 @@ namespace MR {
             for (int n = 0; n < max_trials; n++) {
               dir.set (rng.normal(), rng.normal(), rng.normal());
               dir.normalise();
-              float val = precomputed ? precomputer->value (values, dir) : Math::SH::value (values, dir, lmax);
+              float val = precomputed ? 
+                SH::value_precomputed (values, dir) : 
+                SH::value (values, dir, lmax);
 
-              if (!isnan (val)) if (val > init_threshold) return (false);
+              if (!gsl_isnan (val)) if (val > init_threshold) return (false);
             } 
           }
           else {
             dir = seed_dir;
             float val = precomputed ? 
-              precomputer->value (values, dir) :
-              Math::SH::value (values, dir, lmax);
+              SH::value_precomputed (values, dir) : 
+              SH::value (values, dir, lmax);
 
-            if (finite (val)) if (val > init_threshold) return (false);
+            if (gsl_finite (val)) if (val > init_threshold) return (false);
           }
 
           return (true);
@@ -90,21 +92,21 @@ namespace MR {
           for (int n = 0; n < 12; n++) {
             Point new_dir = new_rand_dir();
             float val = precomputed ? 
-              precomputer->value (values, new_dir) : 
-              Math::SH::value<float> (values, new_dir, lmax);
+              SH::value_precomputed (values, new_dir) : 
+              SH::value (values, new_dir, lmax);
 
             if (val > max_val) max_val = val;
           }
 
-          if (isnan (max_val)) return (true);
+          if (gsl_isnan (max_val)) return (true);
           if (max_val < threshold) return (true);
           max_val *= 1.5;
 
           for (int n = 0; n < max_trials; n++) {
             Point new_dir = new_rand_dir();
             float val = precomputed ? 
-              precomputer->value (values, new_dir) : 
-              Math::SH::value<float> (values, new_dir, lmax);
+              SH::value_precomputed (values, new_dir) : 
+              SH::value (values, new_dir, lmax);
 
             if (val > threshold) {
               if (val > max_val) info ("max_val exceeded!!! (val = " + str(val) + ", max_val = " + str (max_val) + ")");

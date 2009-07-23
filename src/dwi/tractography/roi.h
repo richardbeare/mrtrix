@@ -25,9 +25,8 @@
 
 #include "point.h"
 #include "ptr.h"
-#include "image/object.h"
 #include "image/interp.h"
-#include "math/rng.h"
+#include "math/simulation.h"
 
 
 namespace MR {
@@ -42,12 +41,12 @@ namespace MR {
             Include = 1,
             Exclude = 2,
             Mask = 3,
-            Undefined = INT_MAX
+            Undefined = G_MAXINT
           } Type;
 
           ROI (Type type_id, const Point& sphere_pos, float sphere_radius) : type (type_id), position (sphere_pos), radius (sphere_radius) { }
-          ROI (Type type_id, RefPtr<Image::Object> mask_image) : type (type_id), radius (NAN), mask (mask_image->name()), mask_object (mask_image) { }
-          ROI (Type type_id, const std::string& spec) : type (type_id), radius (NAN) {
+          ROI (Type type_id, RefPtr<Image::Object> mask_image) : type (type_id), radius (GSL_NAN), mask (mask_image->name()), mask_object (mask_image) { }
+          ROI (Type type_id, const String& spec) : type (type_id), radius (GSL_NAN) {
             try {
               Exception::Lower s (1);
               std::vector<float> F (parse_floats (spec));
@@ -64,10 +63,10 @@ namespace MR {
           Type   type;
           Point  position;
           float  radius;
-          std::string mask;
+          String mask;
           RefPtr<Image::Object> mask_object;
 
-          std::string  type_description () const {
+          String  type_description () const {
             switch (type) { 
               case Seed: return ("seed"); 
               case Include: return ("include"); 
@@ -77,9 +76,9 @@ namespace MR {
             }
           }
 
-          std::string shape () const { return (mask.size() ? "image" : "sphere"); }
-          std::string parameters () const { return (mask.size() ? mask : str(position[0]) + "," + str(position[1]) + "," + str(position[2]) + "," + str(radius)); }
-          std::string specification () const { return (type_description() + " " + parameters()); }
+          String shape () const { return (mask.size() ? "image" : "sphere"); }
+          String parameters () const { return (mask.size() ? mask : str(position[0]) + "," + str(position[1]) + "," + str(position[2]) + "," + str(radius)); }
+          String specification () const { return (type_description() + " " + parameters()); }
       };
 
 

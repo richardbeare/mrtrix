@@ -27,23 +27,23 @@
 
 namespace MR {
   namespace Image {
-    class Voxel;
+    class Position;
   }
 
   class Histogram {
     public:
-      Histogram (Image::Voxel& ima, uint num_buckets=100);
+      Histogram (Image::Position& ima, guint num_buckets=100);
 
-      uint   frequency (uint index) const    { return (list[index].frequency); }
-      float   value (uint index) const        { return (list[index].value); }
-      uint   num () const                    { return (list.size()); }
+      guint   frequency (guint index) const    { return (list[index].frequency); }
+      float   value (guint index) const        { return (list[index].value); }
+      guint   num () const                    { return (list.size()); }
       float   first_min () const;
 
     protected:
       class Entry {
         public:
           Entry () : frequency (0), value (0.0) { }
-          uint  frequency;
+          guint  frequency;
           float  value;
       };
 

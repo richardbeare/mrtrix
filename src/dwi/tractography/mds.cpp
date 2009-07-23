@@ -27,7 +27,7 @@ namespace MR {
   namespace DWI {
     namespace Tractography {
 
-      void MDS::read (const std::string& filename, Properties& properties)
+      void MDS::read (const String& filename, Properties& properties)
       {
         tracks.clear();
         current_offset = 0;
@@ -45,17 +45,17 @@ namespace MR {
           throw Exception ("file \"" + mmap.name() + "\" is not in MDS format (unrecognised magic number)");
 
         is_BE = false;
-        if (get<uint16_t> ((uint8_t*) mmap.address() + sizeof (int32_t), is_BE) == 0x0100U) is_BE = true;
-        else if (get<uint16_t> ((uint8_t*) mmap.address() + sizeof (uint32_t), is_BE) != 0x0001U) 
+        if (get<guint16> ((guint8*) mmap.address() + sizeof (gint32), is_BE) == 0x0100U) is_BE = true;
+        else if (get<guint16> ((guint8*) mmap.address() + sizeof (guint32), is_BE) != 0x0001U) 
           throw Exception ("MDS file \"" + mmap.name() + "\" is badly formed (invalid byte order specifier)");
 
-        current_offset = sizeof (uint32_t) + sizeof (uint16_t);
+        current_offset = sizeof (guint32) + sizeof (guint16);
 
         while (1) {
-          if (size_t(current_offset + 2*sizeof (uint32_t)) >= mmap.size()) 
+          if (gsize(current_offset + 2*sizeof (guint32)) >= mmap.size()) 
             throw Exception ("end of file reached before last MDS element in file \"" + mmap.name() + "\"");
 
-          if (size_t(current_offset + 2*sizeof (uint32_t) + size()) >= mmap.size()) 
+          if (gsize(current_offset + 2*sizeof (guint32) + size()) >= mmap.size()) 
             throw Exception ("end of file reached before end of data for last MDS element in file \"" + mmap.name() + "\"");
 
           if (tag().type() == DataType::Undefined && size() != 0) 
@@ -76,7 +76,7 @@ namespace MR {
             catch (...) { throw Exception ("error interpreting MDS tag file \"" + mmap.name() + "\""); }
           }
 
-          current_offset += 2*sizeof (uint32_t) + size();
+          current_offset += 2*sizeof (guint32) + size();
         };
 
       }
@@ -85,10 +85,10 @@ namespace MR {
 
 
 
-      void MDS::create (const std::string& filename, const Properties& properties)
+      void MDS::create (const String& filename, const Properties& properties)
       {
         current_offset = 0;
-#ifdef BYTE_ORDER_BIG_ENDIAN
+#if G_BYTE_ORDER == G_BIG_ENDIAN
         is_BE = true;
 #else
         is_BE = false;
@@ -99,14 +99,14 @@ namespace MR {
         mmap.map();
 
         memcpy (mmap.address(), "MDS#", 4);
-        put<uint16_t> (0x01U, (uint8_t*) mmap.address() + sizeof (uint32_t), is_BE);
+        put<guint16> (0x01U, (guint8*) mmap.address() + sizeof (guint32), is_BE);
 
-        current_offset = next = sizeof (uint32_t) + sizeof (uint16_t);
+        current_offset = next = sizeof (guint32) + sizeof (guint16);
 
         tracks.clear();
 
 
-        std::map<std::string, std::string>::const_iterator i;
+        std::map<String, String>::const_iterator i;
         if ((i = properties.find ("method")) != properties.end()) append_string (Tags::Method, i->second);
         if ((i = properties.find ("cmd")) != properties.end())    append_string (Tags::Cmd, i->second);
         if ((i = properties.find ("source")) != properties.end()) append_string (Tags::Source, i->second);
@@ -118,12 +118,12 @@ namespace MR {
         if ((i = properties.find ("init_threshold")) != properties.end())  append_float32 (Tags::InitThreshold, to<float32> (i->second));
         if ((i = properties.find ("min_curv")) != properties.end())        append_float32 (Tags::MinCurv,       to<float32> (i->second));
 
-        if ((i = properties.find ("max_num_tracks")) != properties.end())  append_uint32 (Tags::MaxNumTracks,   to<uint32_t> (i->second));
-        if ((i = properties.find ("unidirectional")) != properties.end())  append_uint8  (Tags::UniDirectional, to<uint8_t> (i->second));
+        if ((i = properties.find ("max_num_tracks")) != properties.end())  append_uint32 (Tags::MaxNumTracks,   to<guint32> (i->second));
+        if ((i = properties.find ("unidirectional")) != properties.end())  append_uint8  (Tags::UniDirectional, to<guint8> (i->second));
 
-        if ((i = properties.find ("lmax")) != properties.end())            append_int32 (Tags::SD::LMax,        to<int32_t> (i->second));
-        if ((i = properties.find ("sh_precomputed")) != properties.end())  append_int8  (Tags::SD::Precomputed, to<int8_t> (i->second));
-        if ((i = properties.find ("sd_max_trials")) != properties.end())   append_int32 (Tags::SD::MaxTrials,   to<int32_t> (i->second));
+        if ((i = properties.find ("lmax")) != properties.end())            append_int32 (Tags::SD::LMax,        to<gint32> (i->second));
+        if ((i = properties.find ("sh_precomputed")) != properties.end())  append_int8  (Tags::SD::Precomputed, to<gint8> (i->second));
+        if ((i = properties.find ("sd_max_trials")) != properties.end())   append_int32 (Tags::SD::MaxTrials,   to<gint32> (i->second));
 
 
         for (std::vector<RefPtr<ROI> >::const_iterator r = properties.roi.begin(); r != properties.roi.end(); ++r) {
@@ -141,7 +141,7 @@ namespace MR {
           append (Tags::ROI::End);
         }
 
-        for (std::vector<std::string>::const_iterator c = properties.comments.begin(); c != properties.comments.end(); ++c)
+        for (std::vector<String>::const_iterator c = properties.comments.begin(); c != properties.comments.end(); ++c)
           append_string (Tags::Comment, *c);
 
       }
@@ -179,7 +179,7 @@ namespace MR {
               (tag() != Tags::ROI::End && containers().size() != 1) ) 
             error ("unexpected hierarchy in track file \"" + name() + "\"!");
 
-          if (tag() == Tags::ROI::Start) { type = ROI::Undefined; shape = 100; sphere_pos.invalidate(); sphere_rad = NAN; mask_name.clear(); }
+          if (tag() == Tags::ROI::Start) { type = ROI::Undefined; shape = 100; sphere_pos.invalidate(); sphere_rad = GSL_NAN; mask_name.clear(); }
           else {
             if (tag() == Tags::ROI::Type) type = (ROI::Type) get_uint8();
             else if (tag() == Tags::ROI::Shape) shape = get_uint8();
@@ -240,11 +240,11 @@ unknown:
 
       void MDS::append (const std::vector<Point>& points)
       {
-        uint len = 3*sizeof(float32)*points.size();
+        guint len = 3*sizeof(float32)*points.size();
         append (Tags::Track, len);
 
         float32* p = (float32*) data();
-        for (uint n = 0; n < points.size(); n++) {
+        for (guint n = 0; n < points.size(); n++) {
           put<float32> (points[n][0], p++, BE());
           put<float32> (points[n][1], p++, BE());
           put<float32> (points[n][2], p++, BE());
@@ -267,7 +267,7 @@ unknown:
 
 
 
-      void MDS::append (Tag tag_id, uint32_t nbytes)
+      void MDS::append (Tag tag_id, guint32 nbytes)
       {
         if (!mmap.is_mapped()) throw Exception ("attempt to write to currently unmapped file \"" + mmap.name() + "\"");
 
@@ -278,8 +278,8 @@ unknown:
         debug (MR::printf ("writing: tag %u.%u.%u (%s), %u bytes at offset %u", 
               tag_id[0], tag_id[1], tag_id[2], tag_id.type().specifier(), nbytes, current_offset));
 
-        size_t new_size = mmap.size();
-        while (size_t(current_offset + 4*sizeof (uint32_t) + nbytes) > new_size) 
+        gsize new_size = mmap.size();
+        while (gsize(current_offset + 4*sizeof (guint32) + nbytes) > new_size) 
           new_size += MDS_SIZE_INC;
 
         if (new_size != mmap.size()) {
@@ -287,13 +287,13 @@ unknown:
           mmap.map();
         }
 
-        next = current_offset + 2*sizeof (uint32_t) + nbytes;
+        next = current_offset + 2*sizeof (guint32) + nbytes;
 
-        put<uint32_t> (0, (uint8_t*) mmap.address() + next + sizeof (uint32_t), is_BE);
-        put<uint32_t> (Tags::End(), (uint8_t*) mmap.address() + next, is_BE);
+        put<guint32> (0, (guint8*) mmap.address() + next + sizeof (guint32), is_BE);
+        put<guint32> (Tags::End(), (guint8*) mmap.address() + next, is_BE);
 
-        put<uint32_t> (nbytes, (uint8_t*) mmap.address() + current_offset + sizeof (uint32_t), is_BE);
-        put<uint32_t> (tag_id(), (uint8_t*) mmap.address() + current_offset, is_BE);
+        put<guint32> (nbytes, (guint8*) mmap.address() + current_offset + sizeof (guint32), is_BE);
+        put<guint32> (tag_id(), (guint8*) mmap.address() + current_offset, is_BE);
       }
 
     }

@@ -38,14 +38,14 @@ namespace MR {
         Image () :
           colourmap (0), 
           format (MR::Image::Real), 
-          orientation (NAN, NAN, NAN, NAN), 
+          orientation (GSL_NAN, GSL_NAN, GSL_NAN, GSL_NAN), 
           projection (2),
           interpolate (true) { memset (channel, 0, MRTRIX_MAX_NDIMS*sizeof(int)); }
 
         Image (RefPtr<MR::Image::Object> I) :
           colourmap (0), 
           format (MR::Image::Real), 
-          orientation (NAN, NAN, NAN, NAN), 
+          orientation (GSL_NAN, GSL_NAN, GSL_NAN, GSL_NAN), 
           projection (2),
           interpolate (true) { memset (channel, 0, MRTRIX_MAX_NDIMS*sizeof(int)); set (I); }
 
@@ -57,7 +57,7 @@ namespace MR {
         Scaling               scaling;
         int                   channel[MRTRIX_MAX_NDIMS];
         Math::Quaternion      orientation;
-        uint                 projection;
+        guint                 projection;
         Point                 focus;
         bool                  interpolate;
 

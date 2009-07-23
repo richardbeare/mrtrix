@@ -102,14 +102,14 @@ namespace MR {
       Math::Matrix M (3,3);
       Math::Vector x(3), y(3);
 
-      for (uint m = 0; m < 3; m++) {
+      for (guint m = 0; m < 3; m++) {
         Point axis_vec_pix (0.0, 0.0, 0.0);
         axis_vec_pix[m] = image->dim(m)-1;
         Point axis_vec_real (interp->vec_P2R (axis_vec_pix));
         int axis1 = (m+1) % 3;
         int axis2 = (m+2) % 3;
 
-        for (uint n = 0; n < 4; n++) {
+        for (guint n = 0; n < 4; n++) {
           M(0,0) =            vx[0]; M(1,0) =            vx[1]; M(2,0) =            vx[2];
           M(0,1) =            vy[0]; M(1,1) =            vy[1]; M(2,1) =            vy[2];
           M(0,2) = axis_vec_real[0]; M(1,2) = axis_vec_real[1]; M(2,2) = axis_vec_real[2];

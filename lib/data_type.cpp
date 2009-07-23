@@ -28,51 +28,51 @@
 
 namespace MR {
 
-  const uint8_t DataType::ComplexNumber;
-  const uint8_t DataType::Signed;
-  const uint8_t DataType::LittleEndian;
-  const uint8_t DataType::BigEndian;
-  const uint8_t DataType::Text;
-  const uint8_t DataType::GroupStart;
-  const uint8_t DataType::GroupEnd;
-  const uint8_t DataType::Undefined;
+  const guchar DataType::ComplexNumber;
+  const guchar DataType::Signed;
+  const guchar DataType::LittleEndian;
+  const guchar DataType::BigEndian;
+  const guchar DataType::Text;
+  const guchar DataType::GroupStart;
+  const guchar DataType::GroupEnd;
+  const guchar DataType::Undefined;
 
-  const uint8_t DataType::Bit;
-  const uint8_t DataType::UInt8;
-  const uint8_t DataType::UInt16;
-  const uint8_t DataType::UInt32;
-  const uint8_t DataType::Float32;
-  const uint8_t DataType::Float64;
-  const uint8_t DataType::Int8;
-  const uint8_t DataType::Int16;
-  const uint8_t DataType::Int16LE;
-  const uint8_t DataType::UInt16LE;
-  const uint8_t DataType::Int16BE;
-  const uint8_t DataType::UInt16BE;
-  const uint8_t DataType::Int32;
-  const uint8_t DataType::Int32LE;
-  const uint8_t DataType::UInt32LE;
-  const uint8_t DataType::Int32BE;
-  const uint8_t DataType::UInt32BE;
-  const uint8_t DataType::Float32LE;
-  const uint8_t DataType::Float32BE;
-  const uint8_t DataType::Float64LE;
-  const uint8_t DataType::Float64BE;
-  const uint8_t DataType::CFloat32;
-  const uint8_t DataType::CFloat32LE;
-  const uint8_t DataType::CFloat32BE;
-  const uint8_t DataType::CFloat64;
-  const uint8_t DataType::CFloat64LE;
-  const uint8_t DataType::CFloat64BE;
-  const uint8_t DataType::Native;
-
-
+  const guchar DataType::Bit;
+  const guchar DataType::UInt8;
+  const guchar DataType::UInt16;
+  const guchar DataType::UInt32;
+  const guchar DataType::Float32;
+  const guchar DataType::Float64;
+  const guchar DataType::Int8;
+  const guchar DataType::Int16;
+  const guchar DataType::Int16LE;
+  const guchar DataType::UInt16LE;
+  const guchar DataType::Int16BE;
+  const guchar DataType::UInt16BE;
+  const guchar DataType::Int32;
+  const guchar DataType::Int32LE;
+  const guchar DataType::UInt32LE;
+  const guchar DataType::Int32BE;
+  const guchar DataType::UInt32BE;
+  const guchar DataType::Float32LE;
+  const guchar DataType::Float32BE;
+  const guchar DataType::Float64LE;
+  const guchar DataType::Float64BE;
+  const guchar DataType::CFloat32;
+  const guchar DataType::CFloat32LE;
+  const guchar DataType::CFloat32BE;
+  const guchar DataType::CFloat64;
+  const guchar DataType::CFloat64LE;
+  const guchar DataType::CFloat64BE;
+  const guchar DataType::Native;
 
 
 
-  void DataType::parse (const std::string& spec)
+
+
+  void DataType::parse (const String& spec)
   {
-    std::string str (lowercase (spec));
+    String str (lowercase (spec));
 
     if (str == "float32")    { dt = Float32;     return; }
     if (str == "float32le")  { dt = Float32LE;   return; }
@@ -115,28 +115,28 @@ namespace MR {
 
 
 
-  uint DataType::bits () const
+  guint DataType::bits () const
   {
     switch (dt) {
       case Bit:
         return (1);
       case Int8:
       case UInt8:
-        return (8*sizeof (int8_t));
+        return (8*sizeof (gint8));
       case Int16:
       case UInt16:
       case Int16LE:
       case UInt16LE:
       case Int16BE:
       case UInt16BE:
-        return (8*sizeof (int16_t));
+        return (8*sizeof (gint16));
       case Int32:
       case UInt32:
       case Int32LE:
       case UInt32LE:
       case Int32BE:
       case UInt32BE:
-        return (8*sizeof (int32_t));
+        return (8*sizeof (gint32));
       case Float32:
       case Float32LE:
       case Float32BE:
@@ -160,7 +160,7 @@ namespace MR {
   }
 
 
-  const char* DataType::description() const
+  const gchar* DataType::description() const
   {
     switch (dt) {
       case Bit:        return ("bitwise");
@@ -203,7 +203,7 @@ namespace MR {
 
 
 
-  const char* DataType::specifier() const
+  const gchar* DataType::specifier() const
   {
     switch (dt) {
       case Bit:        return ("Bit");
@@ -243,7 +243,7 @@ namespace MR {
       case CFloat64:   return ("CFloat64");
 
       case Undefined:  return ("Undefined");
-      case Text:       return ("std::string");
+      case Text:       return ("String");
       case GroupStart: return ("GroupStart");
       case GroupEnd:   return ("GroupEnd");
 

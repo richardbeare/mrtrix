@@ -54,7 +54,7 @@ namespace MR {
       { 
         const Slice::Current S (pane);
         if (!pane.focus) pane.focus = S.focus;
-        if (isnan (pane.FOV)) {
+        if (gsl_isnan (pane.FOV)) {
           int ix, iy;
           Slice::get_fixed_axes (S.projection, ix, iy);
           MR::Image::Interp& I (*S.image->interp);
@@ -311,7 +311,7 @@ namespace MR {
 
 
 
-      void Normal::set_focus (Slice::Current& S, double x, double y)
+      void Normal::set_focus (Slice::Current& S, gdouble x, gdouble y)
       {
         Point f = pane.model_to_screen (S.focus);
         f[0] = x; 

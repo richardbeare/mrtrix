@@ -57,7 +57,7 @@ namespace MR {
           Point focus;
 
           Pane* overlay_pane;
-          std::string prefix;
+          String prefix;
           Point normal, previous_focus;
           Glib::RefPtr<Gdk::Pixbuf> pix;
           unsigned char* framebuffer;

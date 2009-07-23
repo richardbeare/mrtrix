@@ -69,7 +69,7 @@ namespace MR {
   namespace File {
     namespace Dicom {
 
-      inline std::string format_date (const std::string& date)
+      inline String format_date (const String& date)
       {
         if (date.empty()) return (date);
         return (date.substr(6,2) + "/" + date.substr(4,2) + "/" + date.substr(0,4));
@@ -77,7 +77,7 @@ namespace MR {
 
 
 
-      inline std::string format_time (const std::string& time)
+      inline String format_time (const String& time)
       {
         if (time.empty()) return (time);
         return (time.substr(0,2) + ":" + time.substr(2,2) + ":" + time.substr(4,2));
@@ -85,7 +85,7 @@ namespace MR {
 
 
 
-      inline std::string format_ID (const std::string& ID)
+      inline String format_ID (const String& ID)
       {
         if (ID.empty()) return (ID);
         return ("(" + ID + ")");

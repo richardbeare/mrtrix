@@ -29,7 +29,7 @@ namespace MR {
   const Argument Argument::End;
   const Option   Option::End;
 
-  const char* argument_type_description (ArgType type)
+  const gchar* argument_type_description (ArgType type)
   {
     switch (type) {
       case Integer:  return ("integer");
@@ -46,7 +46,7 @@ namespace MR {
   }
 
 
-  ArgBase::ArgBase (const Argument& arg, const char* string)
+  ArgBase::ArgBase (const Argument& arg, const gchar* string)
   {
     data = new ArgData;
     data->type = arg.type;
@@ -55,12 +55,12 @@ namespace MR {
         case Integer: 
           data->data.i = to<int> (string);
           if (data->data.i < arg.extra_info.i.min || data->data.i > arg.extra_info.i.max) 
-            throw Exception ("value supplied for integer argument \"" + std::string (arg.sname) + "\" is out of bounds");
+            throw Exception ("value supplied for integer argument \"" + String (arg.sname) + "\" is out of bounds");
           break;
         case Float:
           data->data.f = to<float> (string);
           if (data->data.f < arg.extra_info.f.min || data->data.f > arg.extra_info.f.max) 
-            throw Exception ("value supplied for floating-point argument \"" + std::string (arg.sname) + "\" is out of bounds");
+            throw Exception ("value supplied for floating-point argument \"" + String (arg.sname) + "\" is out of bounds");
           break;
         case Text:
         case ArgFile:
@@ -79,16 +79,16 @@ namespace MR {
           break;
         case Choice:
           data->data.i = -1;
-          for (uint n = 0; arg.extra_info.choice[n]; n++) {
+          for (guint n = 0; arg.extra_info.choice[n]; n++) {
             if (uppercase (string) == arg.extra_info.choice[n]) {
               data->data.i = n;
               break;
             }
           }
           if (data->data.i < 0) 
-            throw Exception ("invalid selection supplied \"" + std::string (string) + "\" for argument \"" + arg.sname + "\"");
+            throw Exception ("invalid selection supplied \"" + String (string) + "\" for argument \"" + arg.sname + "\"");
           break;
-        default: throw Exception ("unkown argument type for argument \"" + std::string (arg.sname) + "\"");
+        default: throw Exception ("unkown argument type for argument \"" + String (arg.sname) + "\"");
       }
     }
     catch (Exception) {
@@ -146,12 +146,12 @@ namespace MR {
         stream << ", range: " << arg.extra_info.i.min << ":" << arg.extra_info.i.max;
         break;
       case Float:
-        if (!isnan (arg.extra_info.f.def)) stream << ", default=" << arg.extra_info.f.def;
+        if (!gsl_isnan (arg.extra_info.f.def)) stream << ", default=" << arg.extra_info.f.def;
         stream << ", range: " << arg.extra_info.f.min << ":" << arg.extra_info.f.max;
         break;
       case Choice:
         {
-          const char** p = arg.extra_info.choice;
+          const gchar** p = arg.extra_info.choice;
           stream << " from " << *p;
           while (*(++p)) stream << "|" << *p; 
         }
@@ -176,7 +176,7 @@ namespace MR {
       << ( opt.mandatory ? "mandatory" : "optional" ) << ","
       << ( opt.allow_multiple ? "multiple" : "single" ) << "]\n  "
       << opt.desc << "\n\n";
-    for (uint n = 0; n < opt.size(); n++) 
+    for (guint n = 0; n < opt.size(); n++) 
       stream << "[" << n << "] " << opt[n] << "\n\n";
     return (stream);
   }

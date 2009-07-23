@@ -30,15 +30,15 @@
 
 */
 
+#include <glibmm/thread.h>
 #include <queue>
 
 #include "app.h"
-#include "thread.h"
 #include "file/config.h"
 #include "image/interp.h"
-#include "math/matrix.h"
-#include "math/least_squares.h"
+#include "math/vector.h"
 #include "point.h"
+#include "dwi/SH.h"
 #include "dwi/gradient.h"
 #include "dwi/tractography/file.h"
 #include "dwi/tractography/roi.h"
@@ -49,6 +49,7 @@
 
 using namespace std; 
 using namespace MR; 
+using namespace MR::DWI; 
 using namespace MR::DWI::Tractography; 
 
 SET_VERSION_DEFAULT;
@@ -58,7 +59,7 @@ DESCRIPTION = {
   NULL
 };
 
-const char* type_choices[] = { "DT_STREAM", "DT_PROB", "SD_STREAM", "SD_PROB", NULL };
+const gchar* type_choices[] = { "DT_STREAM", "DT_PROB", "SD_STREAM", "SD_PROB", NULL };
 
 ARGUMENTS = {
   Argument ("type", "tracking type", "the type of streamlines tracking to be performed. Allowed types are DT_STREAM, SD_STREAM, SD_PROB.").type_choice (type_choices),
@@ -69,16 +70,16 @@ ARGUMENTS = {
 
 
 OPTIONS = {
-  Option ("seed", "seed region", "specify the seed region of interest.", AllowMultiple)
+  Option ("seed", "seed region", "specify the seed region of interest.", true, true)
     .append (Argument ("spec", "ROI specification", "specifies the parameters necessary to define the ROI. This should be either the path to a binary mask image, or a comma-separated list of 4 floating-point values, specifying the [x,y,z] coordinates of the centre and radius of a spherical ROI.").type_string()),
 
-  Option ("include", "inclusion ROI", "specify an inclusion region of interest, in the same format as the seed region. Only tracks that enter all such inclusion ROI will be produced.", Optional | AllowMultiple)
+  Option ("include", "inclusion ROI", "specify an inclusion region of interest, in the same format as the seed region. Only tracks that enter all such inclusion ROI will be produced.", false, true)
     .append (Argument ("spec", "ROI specification", "specifies the parameters necessary to define the ROI.").type_string()),
 
-  Option ("exclude", "exclusion ROI", "specify an exclusion region of interest, in the same format as the seed region. Only tracks that enter any such exclusion ROI will be discarded.", Optional | AllowMultiple)
+  Option ("exclude", "exclusion ROI", "specify an exclusion region of interest, in the same format as the seed region. Only tracks that enter any such exclusion ROI will be discarded.", false, true)
     .append (Argument ("spec", "ROI specification", "specifies the parameters necessary to define the ROI.").type_string()),
 
-  Option ("mask", "mask ROI", "specify a mask region of interest, in the same format as the seed region. Tracks will be terminated when they leave any such ROI.", Optional | AllowMultiple)
+  Option ("mask", "mask ROI", "specify a mask region of interest, in the same format as the seed region. Tracks will be terminated when they leave any such ROI.", false, true)
     .append (Argument ("spec", "ROI specification", "specifies the parameters necessary to define the ROI.").type_string()),
 
   Option ("step", "step size", "set the step size of the algorithm.")
@@ -91,7 +92,7 @@ OPTIONS = {
     .append (Argument ("scheme", "gradient file", "the DW gradient file.").type_file()),
 
   Option ("number", "number of tracks", "set the number of tracks to calculate (default is 100 for *_STREAM methods, 1000 for *_PROB methods).")
-    .append (Argument ("tracks", "number of tracks", "the number of tracks.").type_integer (1, INT_MAX, 1)),
+    .append (Argument ("tracks", "number of tracks", "the number of tracks.").type_integer (1, G_MAXINT, 1)),
 
   Option ("length", "track length", "set the maximum length of any track.")
     .append (Argument ("value", "track distance", "the maximum length to use in mm (default is 200 mm).").type_float (1e-2, 1e6, 200.0)),
@@ -121,13 +122,15 @@ OPTIONS = {
 
 
 
-class Threader : public Thread {
+class Threader {
   public:
-    Threader (int type_index, Image::Object& source, const std::string& output_file, Properties& properties, Point init_direction, Ptr<Math::Matrix<float> >& grad) :
+    Threader (int type_index, Image::Object& source, const String& output_file, Tractography::Properties& properties, Point init_direction, Ptr<Math::Matrix>& grad) :
       init_dir (init_direction),
       currently_running (0)
     {
       source.map();
+      num_threads = File::Config::get_int ("NumberOfThreads", 1); 
+      info ("launching " + str (num_threads) + " threads");
       trackers = new Tracker::Base* [num_threads];
 
       switch (type_index) {
@@ -136,9 +139,9 @@ class Threader : public Thread {
             binv = (grad ? *grad : source.header().DW_scheme);
             info ("found " + str(binv.rows()) + "x" + str(binv.columns()) + " diffusion-weighted encoding");
             DWI::normalise_grad (binv);
-            Math::Matrix<float> bmat;
-            DWI::grad2bmatrix (bmat, binv);
-            Math::pinv (binv, bmat);
+            Math::Matrix bmat;
+            grad2bmatrix (bmat, binv);
+            Math::invert (binv, bmat);
             for (int n = 0; n < num_threads; n++) 
               trackers[n] = new Tracker::DTStream (source, properties, binv);
           }
@@ -159,7 +162,6 @@ class Threader : public Thread {
       min_size = round (to<float> (properties["min_dist"]) / to<float> (properties["step_size"]));
 
       writer.create (output_file, properties);
-
     }
 
     ~Threader () { for (int n = 0; n < num_threads; n++) delete trackers[n]; delete [] trackers; }
@@ -167,29 +169,33 @@ class Threader : public Thread {
     void run () {
 
       currently_running = num_threads;
-      uint rng_seed = time (NULL);
-      for (int n = 0; n < num_threads; n++) 
-        trackers[n]->set_rng_seed (rng_seed + n);
+      guint rng_seed = time (NULL);
 
-      num_threads++;
-      Thread::run();
-      num_threads--;
+      Glib::Thread* threads[num_threads];
+      for (int n = 0; n < num_threads; n++) {
+        trackers[n]->set_rng_seed (rng_seed + n);
+        threads[n] = Glib::Thread::create (sigc::bind<Tracker::Base*> (sigc::mem_fun (*this, &Threader::execute), trackers[n]), true);
+      }
+
+      write();
+
+      for (int n = 0; n < num_threads; n++) threads[n]->join();
     }
     
 
 
 
   protected:
-    Math::Matrix<float> binv;
+    Math::Matrix binv;
     const Point init_dir;
-    uint max_num_tracks, min_size;
+    guint max_num_tracks, min_size;
     int  currently_running, num_threads;
     bool unidirectional;
-    Thread::Cond data_ready;
-    Thread::Mutex mutex;
+    Glib::Cond data_ready;
+    Glib::Mutex mutex;
 
     Tracker::Base** trackers;
-    Writer writer;
+    Tractography::Writer writer;
 
     std::queue<std::vector<Point>*> fifo;
 
@@ -235,15 +241,8 @@ class Threader : public Thread {
 
 
 
-    void execute (int thread_number) 
+    void execute (Tracker::Base* tracker) 
     {
-      if (thread_number == 0) {
-        write ();
-        return;
-      }
-
-      Tracker::Base* tracker = trackers[thread_number-1];
-
       std::vector<Point>* tck = NULL;
       while (writer.count < max_num_tracks) {
 
@@ -286,7 +285,7 @@ class Threader : public Thread {
 
 EXECUTE {
 
-  Properties properties;
+  Tractography::Properties properties;
   properties["step_size"] = "0.2";
   properties["max_dist"] = "200";
   properties["min_dist"] = "10";
@@ -317,9 +316,9 @@ EXECUTE {
   if (opt.size()) properties["min_curv"] = str (opt[0][0].get_float());
 
   opt = get_options (6); // grad
-  Ptr<Math::Matrix<float> > grad;
+  Ptr<Math::Matrix> grad;
   if (opt.size()) { 
-    grad = new Math::Matrix<float> ;
+    grad = new Math::Matrix;
     grad->load (opt[0][0].get_string());
   }
 
@@ -348,7 +347,7 @@ EXECUTE {
   opt = get_options (14); // initdirection
   if (opt.size()) {
     std::vector<float> V = parse_floats (opt[0][0].get_string());
-    if (V.size() != 3) throw Exception (std::string ("invalid initial direction \"") + opt[0][0].get_string() + "\"");
+    if (V.size() != 3) throw Exception (String ("invalid initial direction \"") + opt[0][0].get_string() + "\"");
     init_dir[0] = V[0];
     init_dir[1] = V[1];
     init_dir[2] = V[2];
@@ -359,6 +358,7 @@ EXECUTE {
   opt = get_options (15); // noprecomputed
   if (opt.size()) properties["sh_precomputed"] = "0";
 
+  Glib::thread_init();
   Threader thread (argument[0].get_int(), *argument[1].get_image(), argument[2].get_string(), properties, init_dir, grad);
   thread.run();
 }

@@ -24,9 +24,9 @@
 #define __min_max_h__
 
 namespace MR {
-  namespace Image { class Voxel; }
+  namespace Image { class Position; }
 
-  void get_min_max (Image::Voxel& ima, float& min, float& max);
+  void get_min_max (Image::Position& ima, float& min, float& max);
 
 }
 

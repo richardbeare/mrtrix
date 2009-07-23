@@ -44,8 +44,8 @@ namespace MR {
 
         void                 on_remove_button ();
 
-        Option (Window& parent, const MR::Option& option, uint index);
-        uint              idx;
+        Option (Window& parent, const MR::Option& option, guint index);
+        guint              idx;
         OptBase            get () const;
     };
 

@@ -30,11 +30,11 @@
 #include "mrview/sidebar/tractography/track_list.h"
 #include "mrview/sidebar/tractography.h"
 #include "mrview/window.h"
-#include "math/rng.h"
+#include "math/simulation.h"
 #include "dialog/file.h"
 
 
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
 PFNGLBLENDEQUATIONPROC pglBlendEquation = NULL;
 PFNGLBLENDCOLORPROC pglBlendColor = NULL;
 #endif 
@@ -52,7 +52,7 @@ namespace MR {
         parent (sidebar) 
       {
         using namespace Gtk::Menu_Helpers;
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
         pglBlendEquation = (PFNGLBLENDEQUATIONPROC) wglGetProcAddress ("glBlendEquation");
         pglBlendColor = (PFNGLBLENDCOLORPROC) wglGetProcAddress ("glBlendColor");
 #endif
@@ -105,7 +105,7 @@ namespace MR {
 
         Pane& pane (Window::Main->pane());
 
-        float thickness = parent.crop_to_slice.get_active() ? parent.slab_thickness.get_value() : INFINITY; 
+        float thickness = parent.crop_to_slice.get_active() ? parent.slab_thickness.get_value() : GSL_POSINF; 
         bool  depth_blend = parent.depth_blend.get_active();
 
         glDisable (GL_LINE_SMOOTH);
@@ -121,8 +121,8 @@ namespace MR {
 
           if (vertices.empty() || Z != previous_Z || normal != previous_normal) {
 
-            if (finite (thickness) || vertices.empty()) {
-              uint count = 0;
+            if (gsl_finite (thickness) || vertices.empty()) {
+              guint count = 0;
               for (Gtk::TreeModel::Children::iterator iter = tracks.begin(); iter != tracks.end(); ++iter) {
                 bool show = (*iter)[columns.show];
                 if (show) {
@@ -175,7 +175,7 @@ namespace MR {
           glDisable (GL_POINT_SMOOTH);
         }
         else {
-          if (pane.mode->type() == 0 && finite (thickness)) {
+          if (pane.mode->type() == 0 && gsl_finite (thickness)) {
             const Slice::Current S (pane);
 
             GLdouble n[4];
@@ -238,7 +238,7 @@ namespace MR {
 
 
 
-      void TrackList::load (const std::string& filename)
+      void TrackList::load (const String& filename)
       {
         RefPtr<TrackListItem> track (new TrackListItem);
         try { track->load (filename); }
@@ -296,9 +296,9 @@ namespace MR {
         Dialog::File dialog ("Open Tracks", true, false);
 
         if (dialog.run() == Gtk::RESPONSE_OK) {
-          std::vector<std::string> selection = dialog.get_selection();
+          std::vector<String> selection = dialog.get_selection();
           if (selection.size()) 
-            for (uint n = 0; n < selection.size(); n++) 
+            for (guint n = 0; n < selection.size(); n++) 
               load (selection[n]);
         }
       }
@@ -412,7 +412,7 @@ namespace MR {
 
 
 
-      void TrackList::on_tick (const std::string& path) 
+      void TrackList::on_tick (const String& path) 
       {
         vertices.clear();
         Window::Main->update (&parent);
@@ -447,7 +447,7 @@ namespace MR {
 
 
 
-      const uint8_t TrackList::colour_by_dir_data[16*16*4] = 
+      const guint8 TrackList::colour_by_dir_data[16*16*4] = 
       {
         0, 0, 0, 0,
         0, 0, 0, 0,

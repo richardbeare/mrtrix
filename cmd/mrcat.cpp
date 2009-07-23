@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -37,7 +35,7 @@ DESCRIPTION = {
 
 ARGUMENTS = {
   Argument ("image1", "first input image", "the first input image.").type_image_in (),
-  Argument ("image2", "second input image", "the second input image.", AllowMultiple).type_image_in (),
+  Argument ("image2", "second input image", "the second input image.", true, true).type_image_in (),
   Argument ("output", "output image", "the output image.").type_image_out (),
   Argument::End
 };
@@ -89,13 +87,13 @@ EXECUTE {
     throw Exception ("maximum number of dimensions (" + str (MRTRIX_MAX_NDIMS) + ") exceeded");
 
   
-  header.axes.resize (ndims);
+  header.axes.set_ndim (ndims);
 
-  for (size_t i = 0; i < header.axes.size(); i++) {
-    if (!header.axes[i].dim) {
+  for (int i = 0; i < header.axes.ndim(); i++) {
+    if (!header.axes.dim[i]) {
       for (int n = 0; n < num_images; n++) {
         if (in[n]->ndim() > i) {
-          header.axes[i] = in[n]->header().axes[i];
+          header.axes.copy (i, in[n]->header().axes, i);
           break;
         }
       }
@@ -103,33 +101,31 @@ EXECUTE {
   }
 
 
-  header.axes[axis].dim = 0;
+  header.axes.dim[axis] = 0;
   header.data_type = DataType::Float32;
   for (int n = 0; n < num_images; n++) {
-    if (int (in[n]->ndim()) > axis) 
-      header.axes[axis].dim += in[n]->dim(axis) > 1 ? in[n]->dim(axis) : 1;
-    else header.axes[axis].dim++;
+    if (in[n]->ndim() > axis) 
+      header.axes.dim[axis] += in[n]->dim(axis) > 1 ? in[n]->dim(axis) : 1;
+    else header.axes.dim[axis]++;
 
     if (in[n]->is_complex()) 
       header.data_type = DataType::CFloat32;
   }
 
-  Image::Voxel out (*argument[num_images].get_image (header));
-  out.image.map();
+  Image::Position out (*argument[num_images].get_image (header));
 
-  ProgressBar::init (voxel_count(out), "concatenating...");
+  ProgressBar::init (out.voxel_count(), "concatenating...");
 
   for (int i = 0; i < num_images; i++) {
-    Image::Voxel pos (*in[i]);
-    pos.image.map();
+    Image::Position pos (*in[i]);
 
     do {
-      float val = pos.real();
-      out.real() = val;
+      float val = pos.re();
+      out.re (val);
 
       if (out.is_complex()) {
-        val = pos.is_complex() ? pos.imag() : 0.0 ;
-        out.imag() = val;
+        val = pos.is_complex() ? pos.im() : 0.0 ;
+        out.im (val);
       }
 
       ProgressBar::inc();

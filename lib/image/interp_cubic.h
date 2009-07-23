@@ -105,7 +105,7 @@ namespace MR {
 
     inline void InterpCubic::get (OutputType format, float& val, float& val_im)
     {
-      if (out_of_bounds) { val = val_im = NAN; return; }
+      if (out_of_bounds) { val = val_im = GSL_NAN; return; }
       switch (format) {
         case Default:   val = re(); return;
         case Real:      val = re(); return;
@@ -123,7 +123,7 @@ namespace MR {
 
     inline void InterpCubic::abs (OutputType format, float& val, float& val_im)
     {
-      if (out_of_bounds) { val = val_im = NAN; return; }
+      if (out_of_bounds) { val = val_im = GSL_NAN; return; }
       switch (format) {
         case Default:   val = re_abs(); return;
         case Real:      val = re_abs(); return;

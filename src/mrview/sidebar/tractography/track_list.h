@@ -44,7 +44,7 @@ namespace MR {
           TrackList (const Tractography& sidebar);
           virtual ~TrackList();
 
-          void load (const std::string& filename);
+          void load (const String& filename);
           void draw ();
 
         protected:
@@ -54,7 +54,7 @@ namespace MR {
 
               Gtk::TreeModelColumn<bool> show;
               Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf> > pix;
-              Gtk::TreeModelColumn<std::string> name;
+              Gtk::TreeModelColumn<String> name;
               Gtk::TreeModelColumn<RefPtr<TrackListItem> >  track;
           };
 
@@ -71,16 +71,16 @@ namespace MR {
           void on_colour_by_direction ();
           void on_randomise_colour ();
           void on_set_colour ();
-          void on_tick (const std::string& path);
+          void on_tick (const String& path);
           bool on_refresh ();
 
-          std::vector<uint> vertices;
+          std::vector<guint> vertices;
           Point previous_normal;
           float previous_Z;
 
-          static const uint8_t colour_by_dir_data[16*16*4];
+          static const guint8 colour_by_dir_data[16*16*4];
           static TrackListItem::Track::Point* root;
-          static bool compare (uint a, uint b) { return (root[a] < root[b]); }
+          static bool compare (guint a, guint b) { return (root[a] < root[b]); }
 
           friend class Tractography;
       };

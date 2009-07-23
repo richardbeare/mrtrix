@@ -21,9 +21,8 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
 #include "point.h"
-#include "image/voxel.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -49,33 +48,33 @@ EXECUTE {
   Image::Header header (dir_obj);
 
   header.data_type = DataType::Float32;
-  header.axes.resize (4);
-  header.axes[3].dim = dir_obj.dim(3)/3;
+  header.axes.set_ndim (4);
+  header.axes.dim[3] = dir_obj.dim(3)/3;
 
-  Image::Voxel dir (dir_obj);
-  Image::Voxel amp (*argument[1].get_image (header));
+  Image::Position dir (dir_obj);
+  Image::Position amp (*argument[1].get_image (header));
 
   ProgressBar::init (dir.dim(0)*dir.dim(1)*dir.dim(2), "converting orientations to amplitudes...");
 
-  for (dir[2] = amp[2] = 0; dir[2] < dir.dim(2); dir[2]++, amp[2]++) {
-    for (dir[1] = amp[1] = 0; dir[1] < dir.dim(1); dir[1]++, amp[1]++) {
-      for (dir[0] = amp[0] = 0; dir[0] < dir.dim(0); dir[0]++, amp[0]++) {
+  for (dir.set(2,0), amp.set(2,0); dir[2] < dir.dim(2); dir.inc(2), amp.inc(2)) {
+    for (dir.set(1,0), amp.set(1,0); dir[1] < dir.dim(1); dir.inc(1), amp.inc(1)) {
+      for (dir.set(0,0), amp.set(0,0); dir[0] < dir.dim(0); dir.inc(0), amp.inc(0)) {
 
-        dir[3] = 0;
-        amp[3] = 0;
+        dir.set(3,0);
+        amp.set(3,0);
 
         while (dir[3] < dir.dim(3)) {
           Point p;
-          p[0] = dir.value(); dir[3]++;
-          p[1] = dir.value(); dir[3]++;
-          p[2] = dir.value(); dir[3]++;
+          p[0] = dir.value(); dir.inc(3);
+          p[1] = dir.value(); dir.inc(3);
+          p[2] = dir.value(); dir.inc(3);
 
-          float amplitude = NAN;
-          if (finite (p[0]) && finite (p[1]) && finite (p[2]) && p[0] != 0.0 && p[1] != 0.0 && p[2] != 0.0) 
+          float amplitude = GSL_NAN;
+          if (gsl_finite (p[0]) && gsl_finite (p[1]) && gsl_finite (p[2]) && p[0] != 0.0 && p[1] != 0.0 && p[2] != 0.0) 
             amplitude = p.norm();
 
-          amp.value() = amplitude;
-          amp[3]++;
+          amp.value (amplitude);
+          amp.inc(3);
         }
 
         ProgressBar::inc();

@@ -33,10 +33,10 @@ namespace MR {
 
 
 
-      std::vector<int>  Series::count () const
+      std::vector<gint>  Series::count () const
       {
-        std::vector<int> dim (3);
-        std::vector<int> current_dim(2);
+        std::vector<gint> dim (3);
+        std::vector<gint> current_dim(2);
         dim[0] = dim[1] = dim[2] = 0;
         current_dim[0] = current_dim[1] = 1;
 
@@ -45,7 +45,7 @@ namespace MR {
         const Image* first[] = { (*this)[0].get(), (*this)[0].get() };
 
 
-        for (uint current_entry = 1; current_entry < size(); current_entry++) {
+        for (guint current_entry = 1; current_entry < size(); current_entry++) {
 
           if ((*this)[current_entry]->acq != first[1]->acq) {
             if (dim[1] && dim[1] != current_dim[1]) 
@@ -100,7 +100,7 @@ namespace MR {
               format_time(item.time).c_str(),
               item.name.c_str() );
 
-        for (uint n = 0; n < item.size(); n++) stream << (*item[n]);
+        for (guint n = 0; n < item.size(); n++) stream << (*item[n]);
         return (stream);
       }
 

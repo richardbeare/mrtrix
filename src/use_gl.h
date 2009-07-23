@@ -24,7 +24,7 @@
 #define __use_gl_h__
 
 #include <GL/gl.h>
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
 #include <GL/glext.h>
 #include <windows.h>
 

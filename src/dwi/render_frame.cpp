@@ -90,9 +90,9 @@ namespace MR {
       glClearColor (background[0], background[1], background[2], 0.0);
       do_reset_lighting ();
       info ("DWI renderer successfully initialised");
-      info ("GL_RENDERER   = " + std::string ((const char*) glGetString (GL_RENDERER)));
-      info ("GL_VERSION    = " + std::string ((const char*) glGetString (GL_VERSION)));
-      info ("GL_VENDOR     = " + std::string ((const char*) glGetString (GL_VENDOR)));
+      info ("GL_RENDERER   = " + String ((const char*) glGetString (GL_RENDERER)));
+      info ("GL_VERSION    = " + String ((const char*) glGetString (GL_VERSION)));
+      info ("GL_VENDOR     = " + String ((const char*) glGetString (GL_VENDOR)));
       end();
     }
 
@@ -188,7 +188,7 @@ namespace MR {
 
       GLenum error_code = glGetError();
       if (error_code != GL_NO_ERROR) 
-        error (std::string ("OpenGL Error: ") + (const char*) gluErrorString (error_code));
+        error (String ("OpenGL Error: ") + (const char*) gluErrorString (error_code));
 
       swap();
       end();

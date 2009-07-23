@@ -40,7 +40,7 @@ namespace MR {
         static void done ();
 
       protected:
-        ProgressDialog (const std::string& message) : Gtk::Dialog ("MRView", false, false), text (message)
+        ProgressDialog (const String& message) : Gtk::Dialog ("MRView", false, false), text (message)
       {
         set_border_width (5);
         add_button (Gtk::Stock::CANCEL, Gtk::RESPONSE_CANCEL);

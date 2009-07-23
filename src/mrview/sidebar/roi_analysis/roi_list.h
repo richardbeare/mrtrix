@@ -54,10 +54,10 @@ namespace MR {
 
           class ROI {
             public:
-              ROI (RefPtr<MR::Image::Object> image, uint32_t C) : mask (new Image (image)), render (false), colour (C) { mask->image->set_read_only (false);}
+              ROI (RefPtr<MR::Image::Object> image, guint32 C) : mask (new Image (image)), render (false), colour (C) { mask->image->set_read_only (false);}
               RefPtr<Image> mask;
               Slice::Renderer render;
-              uint32_t colour;
+              guint32 colour;
           };
 
           class Columns : public Gtk::TreeModel::ColumnRecord {
@@ -66,7 +66,7 @@ namespace MR {
 
               Gtk::TreeModelColumn<bool> show;
               Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf> > pix;
-              Gtk::TreeModelColumn<std::string> name;
+              Gtk::TreeModelColumn<String> name;
               Gtk::TreeModelColumn<RefPtr<ROI> > roi;
           };
 
@@ -80,10 +80,10 @@ namespace MR {
           void on_close ();
           void on_set_colour ();
           void on_clear ();
-          void on_tick (const std::string& path);
+          void on_tick (const String& path);
 
-          void process (double x, double y);
-          Point position (double x, double y);
+          void process (gdouble x, gdouble y);
+          Point position (gdouble x, gdouble y);
 
           void load (RefPtr<MR::Image::Object> image);
       };

@@ -24,7 +24,6 @@
 #define __file_dicom_series_h__
 
 #include "ptr.h"
-#include "progressbar.h"
 #include "file/dicom/image.h"
 
 namespace MR {
@@ -38,18 +37,18 @@ namespace MR {
         public:
           Series (
               Study* parent, 
-              const std::string& series_name, 
-              uint         series_number,
-              const std::string& series_modality = "", 
-              const std::string& series_date = "", 
-              const std::string& series_time = "");
+              const String& series_name, 
+              guint         series_number,
+              const String& series_modality = "", 
+              const String& series_date = "", 
+              const String& series_time = "");
 
           Study*   study;
-          std::string   name;
-          uint    number;
-          std::string   modality;
-          std::string   date;
-          std::string   time;
+          String   name;
+          guint    number;
+          String   modality;
+          String   date;
+          String   time;
 
           void               read ();
           std::vector<int>   count () const;
@@ -74,11 +73,11 @@ namespace MR {
 
       inline Series::Series (
           Study*  parent, 
-          const std::string& series_name, 
-          uint         series_number,
-          const std::string& series_modality, 
-          const std::string& series_date, 
-          const std::string& series_time) :
+          const String& series_name, 
+          guint         series_number,
+          const String& series_modality, 
+          const String& series_date, 
+          const String& series_time) :
         study (parent),
         name (series_name),
         modality (series_modality),
@@ -94,7 +93,7 @@ namespace MR {
       inline void Series::read ()
       {
         ProgressBar::init (size(), "reading DICOM series \"" + name + "\"...");
-        for (uint i = 0; i < size(); i++) {
+        for (guint i = 0; i < size(); i++) {
           (*this)[i]->read(); 
           ProgressBar::inc();
         }
@@ -106,7 +105,7 @@ namespace MR {
 
       inline void Series::print_fields (bool dcm, bool csa) const 
       {
-        for (uint i = 0; i < size(); i++) 
+        for (guint i = 0; i < size(); i++) 
           (*this)[i]->print_fields (dcm, csa);
       }
 

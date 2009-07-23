@@ -38,9 +38,9 @@ namespace MR {
 
       Window* window = NULL;
 
-      void gui_print (const std::string& msg) { window->text.get_buffer()->insert_at_cursor (msg); }
+      void gui_print (const String& msg) { window->text.get_buffer()->insert_at_cursor (msg); }
       
-      void gui_error (const std::string& msg) 
+      void gui_error (const String& msg) 
       {
         if (App::log_level) {
           window->text.get_buffer()->insert_with_tag (window->text.get_buffer()->end(), msg + "\n", window->red); 
@@ -49,12 +49,12 @@ namespace MR {
         }
       }
 
-      void gui_info  (const std::string& msg) 
+      void gui_info  (const String& msg) 
       { 
         if (App::log_level > 1) window->text.get_buffer()->insert_with_tag (window->text.get_buffer()->end(), msg + "\n", window->blue); 
       }
 
-      void gui_debug (const std::string& msg)
+      void gui_debug (const String& msg)
       { 
         if (App::log_level > 2) window->text.get_buffer()->insert_with_tag (window->text.get_buffer()->end(), msg + "\n", window->grey); 
       }
@@ -75,7 +75,7 @@ namespace MR {
 
       void display_func_gui ()
       {
-        if (isnan (multiplier)) Dialog::window->progressbar.pulse ();
+        if (gsl_isnan (multiplier)) Dialog::window->progressbar.pulse ();
         else Dialog::window->progressbar.set_fraction (percent/100.0);
       }
 
@@ -95,7 +95,7 @@ namespace MR {
 
   namespace Dialog {
 
-    const char* Window::message_level_options[] = {
+    const gchar* Window::message_level_options[] = {
       "error messages only", 
       "error & information messages", 
       "error, information & debugging messages" 
@@ -127,8 +127,8 @@ namespace MR {
       if (app.command_description[0]) {
         description_label.set_text (app.command_description[0]);
         if (app.command_description[1]) {
-          std::string desc (app.command_description[1]);
-          for (const char** p = app.command_description+2; *p; p++) { desc += "\n\n"; desc += *p; }
+          String desc (app.command_description[1]);
+          for (const gchar** p = app.command_description+2; *p; p++) { desc += "\n\n"; desc += *p; }
           description_label.set_tooltip_text (desc);
         }
       }
@@ -166,7 +166,7 @@ namespace MR {
         option_menu_box.pack_start (options_label, Gtk::PACK_SHRINK);
         option_menu_box.pack_start (option_combobox);
         option_menu_box.set_spacing (GUI_SPACING);
-        for (uint n = 0; App::command_options[n].is_valid(); n++) {
+        for (guint n = 0; App::command_options[n].is_valid(); n++) {
           if (App::command_options[n].mandatory) {
             Option* opt = manage (new Option (*this, App::command_options[n], n));
             options_box.pack_start (*opt, Gtk::PACK_SHRINK);
@@ -261,7 +261,7 @@ namespace MR {
         Argument* arg = (Argument*) (it->get_widget());
         app.argument.push_back (arg->get());
         if (app.argument.back().type() == Undefined) {
-          error (std::string ("value supplied for argument \"") + arg->arg.lname + "\" is not valid");
+          error (String ("value supplied for argument \"") + arg->arg.lname + "\" is not valid");
           return;
         }
       }
@@ -291,8 +291,8 @@ namespace MR {
 
       option_combobox.append_text ("--");
       for (const MR::Option* opt = App::command_options; opt->is_valid(); opt++) {
-        const char* name = opt->lname;
-        for (uint n = 1; n < list.size(); n++) {
+        const gchar* name = opt->lname;
+        for (guint n = 1; n < list.size(); n++) {
           Option* p = (Option*) (list[n].get_widget());
           if (opt == &p->opt) {
             if (!opt->allow_multiple) name = NULL;
@@ -313,8 +313,8 @@ namespace MR {
     {
       if (option_combobox.get_active_row_number() == 0) return;
 
-      std::string selection (option_combobox.get_active_text ());
-      for (uint n = 0; App::command_options[n].is_valid(); n++) {
+      String selection (option_combobox.get_active_text ());
+      for (guint n = 0; App::command_options[n].is_valid(); n++) {
         if (selection == App::command_options[n].lname) {
           Option* opt = manage (new Option (*this, App::command_options[n], n));
           options_box.pack_start (*opt, Gtk::PACK_SHRINK);

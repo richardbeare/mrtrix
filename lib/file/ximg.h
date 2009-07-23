@@ -31,22 +31,23 @@ namespace MR {
   namespace File {
 
     class XImg {
-      public:
-        void           read (const std::string& filename);
-        std::string    name () const;
-
-        const uint8_t* pixel_data () const;
-        int            width () const;
-        int            height () const;
-        int            depth () const;
-
-        friend std::ostream& operator<< (std::ostream& stream, const XImg& X);
 
       private:
         MMap           mmap;
-        const uint8_t* bof () const;
+        const guint8*  bof () const;
+
+      public:
+        void           read (const String& filename);
+        String         name () const;
+
+        const guint8*  pixel_data () const;
+        gint           width () const;
+        gint           height () const;
+        gint           depth () const;
+
     };
 
+    std::ostream& operator<< (std::ostream& stream, const XImg& X);
 
 
 
@@ -58,24 +59,24 @@ namespace MR {
 
 
 
-    inline const uint8_t*  XImg::bof () const { return ((uint8_t*) mmap.address()); }
+    inline const guint8*  XImg::bof () const { return ((guint8*) mmap.address()); }
 
-    inline void XImg::read (const std::string& filename) 
+    inline void XImg::read (const String& filename) 
     {
       mmap.init (filename);
       mmap.map();
     }
 
-    inline std::string XImg::name () const { return (mmap.name()); }
+    inline String XImg::name () const { return (mmap.name()); }
 
-    inline const uint8_t* XImg::pixel_data () const { return (bof() + getBE<int32_t> (bof() + 0x4)); }
-    inline int XImg::width () const      { return (getBE<int32_t> (bof() + 0x8)); }
-    inline int XImg::height () const     { return (getBE<int32_t> (bof() + 0xc)); }
-    inline int XImg::depth () const      { return (getBE<int32_t> (bof() + 0x10)); }
+    inline const guint8* XImg::pixel_data () const { return (bof() + getBE<gint32> (bof() + 0x4)); }
+    inline gint XImg::width () const      { return (getBE<gint32> (bof() + 0x8)); }
+    inline gint XImg::height () const     { return (getBE<gint32> (bof() + 0xc)); }
+    inline gint XImg::depth () const      { return (getBE<gint32> (bof() + 0x10)); }
 
     inline std::ostream& operator<< (std::ostream& stream, const XImg& X) 
     {
-      stream << "name: \"" << X.name() << ", pixel_data at " << size_t (X.pixel_data() - X.bof()) << ", dim: [ " << X.width() << " " << X.height() << " ]\n";
+      stream << "name: \"" << X.name() << ", pixel_data at " << X.pixel_data() << ", dim: [ " << X.width() << " " << X.height() << " ]\n";
       return (stream);
     }
 

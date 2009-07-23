@@ -34,9 +34,8 @@
 #define __dwi_tractography_tracker_base_h__
 
 #include "image/interp.h"
-#include "math/math.h"
 #include "math/matrix.h"
-#include "math/rng.h"
+#include "math/simulation.h"
 #include "dwi/tractography/properties.h"
 
 namespace MR {
@@ -69,7 +68,7 @@ namespace MR {
 
             bool next ();
 
-            void set_rng_seed (uint seed) { return (rng.set_seed (seed)); }
+            void set_rng_seed (guint seed) { return (rng.set_seed (seed)); }
 
             static float curv2angle (float step_size, float curv)     { return (2.0 * asin (step_size / (2.0 * curv))); }
 
@@ -89,7 +88,7 @@ namespace MR {
 
             class Sphere {
               public:
-                Sphere (const Point& position, float radius) : p (position), r (radius), r2 (Math::pow2 (r)), volume (4.0*M_PI*Math::pow3 (r)/3.0), included (false) { }
+                Sphere (const Point& position, float radius) : p (position), r (radius), r2 (gsl_pow_2 (r)), volume (4.0*M_PI*gsl_pow_3 (r)/3.0), included (false) { }
                 Point p;
                 float r, r2, volume;
                 bool included;
@@ -130,7 +129,7 @@ namespace MR {
               private:
                 void get_bounds ()
                 {
-                  uint count = 0;
+                  guint count = 0;
                   for (i.set(2,0); i[2] < i.dim(2); i.inc(2)) {
                     for (i.set(1,0); i[1] < i.dim(1); i.inc(1)) {
                       for (i.set(0,0); i[0] < i.dim(0); i.inc(0)) {
@@ -169,7 +168,7 @@ namespace MR {
             {
               source.R (p);
               for (source.set(3,0); source[3] < source.dim(3); source.inc(3)) values[source[3]] = source.value();
-              return (isnan (values[0]));
+              return (gsl_isnan (values[0]));
             }
 
             bool not_in_mask (const Point& pt);

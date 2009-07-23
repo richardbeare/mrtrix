@@ -79,7 +79,7 @@ namespace MR {
 
       GLenum error_code = glGetError();
       if (error_code != GL_NO_ERROR) 
-        error (std::string ("OpenGL Error: ") + (const char*) gluErrorString (error_code));
+        error (String ("OpenGL Error: ") + (const char*) gluErrorString (error_code));
 
       swap();
       end();
@@ -93,7 +93,7 @@ namespace MR {
 
 
     Pane::Pane () : 
-      FOV (NAN),
+      FOV (GSL_NAN),
       gl_area (*this) 
     { 
       set_mode (0);

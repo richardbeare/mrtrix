@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -55,7 +53,7 @@ OPTIONS = {
 };
 
 
-float erode (Image::Voxel& in) 
+float erode (Image::Position& in) 
 {
   if (in.value() < 0.5) return (0.0);
   float val;
@@ -65,27 +63,27 @@ float erode (Image::Voxel& in)
   if (in[0] == in.dim(0)-1) return (0.0);
   if (in[1] == in.dim(1)-1) return (0.0);
   if (in[2] == in.dim(2)-1) return (0.0);
-  if (in[0] > 0) { in[0]--; val = in.value(); in[0]++; if (val < 0.5) return (0.0); }
-  if (in[1] > 0) { in[1]--; val = in.value(); in[1]++; if (val < 0.5) return (0.0); }
-  if (in[2] > 0) { in[2]--; val = in.value(); in[2]++; if (val < 0.5) return (0.0); }
-  if (in[0] < in.dim(0)-1) { in[0]++; val = in.value(); in[0]--; if (val < 0.5) return (0.0); }
-  if (in[1] < in.dim(1)-1) { in[1]++; val = in.value(); in[1]--; if (val < 0.5) return (0.0); }
-  if (in[2] < in.dim(2)-1) { in[2]++; val = in.value(); in[2]--; if (val < 0.5) return (0.0); }
+  if (in[0] > 0) { in.move(0,-1); val = in.value(); in.inc(0); if (val < 0.5) return (0.0); }
+  if (in[1] > 0) { in.move(1,-1); val = in.value(); in.inc(1); if (val < 0.5) return (0.0); }
+  if (in[2] > 0) { in.move(2,-1); val = in.value(); in.inc(2); if (val < 0.5) return (0.0); }
+  if (in[0] < in.dim(0)-1) { in.inc(0); val = in.value(); in.move(0,-1); if (val < 0.5) return (0.0); }
+  if (in[1] < in.dim(1)-1) { in.inc(1); val = in.value(); in.move(1,-1); if (val < 0.5) return (0.0); }
+  if (in[2] < in.dim(2)-1) { in.inc(2); val = in.value(); in.move(2,-1); if (val < 0.5) return (0.0); }
   return (1.0);
 }
 
 
 
-float dilate (Image::Voxel& in) 
+float dilate (Image::Position& in) 
 {
   if (in.value() >= 0.5) return (1.0);
   float val;
-  if (in[0] > 0) { in[0]--; val = in.value(); in[0]++; if (val >= 0.5) return (1.0); }
-  if (in[1] > 0) { in[1]--; val = in.value(); in[1]++; if (val >= 0.5) return (1.0); }
-  if (in[2] > 0) { in[2]--; val = in.value(); in[2]++; if (val >= 0.5) return (1.0); }
-  if (in[0] < in.dim(0)-1) { in[0]++; val = in.value(); in[0]--; if (val >= 0.5) return (1.0); }
-  if (in[1] < in.dim(1)-1) { in[1]++; val = in.value(); in[1]--; if (val >= 0.5) return (1.0); }
-  if (in[2] < in.dim(2)-1) { in[2]++; val = in.value(); in[2]--; if (val >= 0.5) return (1.0); }
+  if (in[0] > 0) { in.move(0,-1); val = in.value(); in.inc(0); if (val >= 0.5) return (1.0); }
+  if (in[1] > 0) { in.move(1,-1); val = in.value(); in.inc(1); if (val >= 0.5) return (1.0); }
+  if (in[2] > 0) { in.move(2,-1); val = in.value(); in.inc(2); if (val >= 0.5) return (1.0); }
+  if (in[0] < in.dim(0)-1) { in.inc(0); val = in.value(); in.move(0,-1); if (val >= 0.5) return (1.0); }
+  if (in[1] < in.dim(1)-1) { in.inc(1); val = in.value(); in.move(1,-1); if (val >= 0.5) return (1.0); }
+  if (in[2] < in.dim(2)-1) { in.inc(2); val = in.value(); in.move(2,-1); if (val >= 0.5) return (1.0); }
   return (0.0);
 }
 
@@ -102,25 +100,20 @@ EXECUTE {
   opt = get_options (1); // npass
   int npasses = opt.size() ? opt[0][0].get_int() : 1;
 
-  obj_in->map();
-
   for (int npass = 0; npass < npasses; npass++) {
     RefPtr<Image::Object> obj_out;
     if (npass < npasses-1) {
        obj_out = new Image::Object;
        obj_out->create ("", header);
     }
-    else {
-      obj_out = argument[1].get_image (header);
-      obj_out->map();
-    }
+    else obj_out = argument[1].get_image (header);
 
-    Image::Voxel in (*obj_in);
-    Image::Voxel out (*obj_out);
-    ProgressBar::init (voxel_count(out), (dilation ? "dilat" : "erod" ) + std::string ("ing (pass ") + str(npass+1) +") ...");
+    Image::Position in (*obj_in);
+    Image::Position out (*obj_out);
+    ProgressBar::init (out.voxel_count(), (dilation ? "dilat" : "erod" ) + String ("ing (pass ") + str(npass+1) +") ...");
     do {
       float val = dilation ? dilate (in) : erode (in);
-      out.value() = val;
+      out.value (val);
       in++;
       ProgressBar::inc();
     } while (out++);

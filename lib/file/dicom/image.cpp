@@ -24,7 +24,8 @@
 
 */
 
-#include "file/path.h"
+#include <glibmm/miscutils.h>
+
 #include "file/dicom/image.h"
 #include "file/dicom/series.h"
 #include "file/dicom/study.h"
@@ -35,16 +36,22 @@ namespace MR {
   namespace File {
     namespace Dicom {
 
-      void Image::parse_item (Element& item, const std::string& dirname)
+
+
+
+
+
+
+      void Image::parse_item (Element& item, const String& dirname)
       {
         switch (item.group) {
           case 0x0004U: 
             if (item.element == 0x1500U) {
               assert (dirname.size());
               filename = dirname;
-              std::vector<std::string> V (item.get_string());
-              for (uint n = 0; n < V.size(); n++) 
-                filename = Path::join (filename, V[n]);
+              std::vector<String> V (item.get_string());
+              for (guint n = 0; n < V.size(); n++) 
+                filename = Glib::build_filename (filename, V[n]);
             }
             break;
           case 0x0018U: 
@@ -58,7 +65,7 @@ namespace MR {
                             int c = sequence_name.size()-1;
                             while (c >= 0 && isdigit (sequence_name[c])) c--;
                             c++;
-                            sequence = to<uint> (sequence_name.substr (c));
+                            sequence = to<guint> (sequence_name.substr (c));
                             return;
             }
             return;
@@ -136,8 +143,8 @@ namespace MR {
       bool Image::operator< (const Image& ima) const
       {
         if (acq != ima.acq) return (acq < ima.acq);
-        assert (!isnan(distance));
-        assert (!isnan(ima.distance));
+        assert (!gsl_isnan(distance));
+        assert (!gsl_isnan(ima.distance));
         if (distance != ima.distance) return (distance < ima.distance);
         if (sequence != ima.sequence) return (sequence < ima.sequence);
         if (instance != ima.instance) return (instance < ima.instance);
@@ -178,7 +185,7 @@ namespace MR {
 
 
 
-      void Image::decode_csa (const uint8_t* start, const uint8_t* end)
+      void Image::decode_csa (const guint8* start, const guint8* end)
       {
         CSAEntry entry (start, end);
 
@@ -190,7 +197,7 @@ namespace MR {
         }
 
         if (G[0] && bvalue)
-          if (Math::abs(G[0]) > 1.0 && Math::abs(G[1]) > 1.0 && Math::abs(G[2]) > 1.0)
+          if (fabs(G[0]) > 1.0 && fabs(G[1]) > 1.0 && fabs(G[2]) > 1.0)
             bvalue = G[0] = G[1] = G[2] = 0.0;
       }
 

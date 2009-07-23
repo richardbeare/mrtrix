@@ -21,21 +21,22 @@
 */
 
 #include <fstream>
+#include <glibmm/stringutils.h>
 #include "file/key_value.h"
 
 
 namespace MR {
   namespace File {
 
-    void KeyValue::open (const std::string& file, const char* first_line)
+    void KeyValue::open (const String& file, const gchar* first_line)
     {
       filename.clear();
       debug ("reading key/value file \"" + file + "\"...");
 
       in.open (file.c_str(), std::ios::out | std::ios::binary);
-      if (!in) throw Exception ("failed to open key/value file \"" + file + "\": " + strerror(errno));
+      if (!in) throw Exception ("failed to open key/value file \"" + file + "\": " + Glib::strerror(errno));
       if (first_line) {
-        std::string sbuf;
+        String sbuf;
         getline (in, sbuf);
         if (sbuf.compare (0, strlen (first_line), first_line)) {
           in.close();
@@ -52,9 +53,9 @@ namespace MR {
     bool KeyValue::next ()
     {
       while (in.good()) {
-        std::string sbuf;
+        String sbuf;
         getline (in, sbuf);
-        if (in.bad()) throw Exception ("error reading key/value file \"" + filename + "\": " + strerror (errno));
+        if (in.bad()) throw Exception ("error reading key/value file \"" + filename + "\": " + Glib::strerror (errno));
 
         sbuf = strip (sbuf.substr (0, sbuf.find_first_of ('#')));
         if (sbuf == "END") {
@@ -64,7 +65,7 @@ namespace MR {
 
         if (sbuf.size()) {
           size_t colon = sbuf.find_first_of (':');
-          if (colon == std::string::npos) info ("WARNING: malformed key/value entry (\"" + sbuf + "\") in file \"" + filename + "\" - ignored");
+          if (colon == String::npos) info ("WARNING: malformed key/value entry (\"" + sbuf + "\") in file \"" + filename + "\" - ignored");
           else {
             K = strip (sbuf.substr (0, colon));
             V = strip (sbuf.substr (colon+1));

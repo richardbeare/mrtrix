@@ -20,9 +20,10 @@
 
 */
 
+#include <glibmm/fileutils.h>
+#include <glibmm/stringutils.h>
 
 #include "app.h"
-#include "file/path.h"
 #include "file/dicom/quick_scan.h"
 
 using namespace std; 
@@ -37,7 +38,7 @@ DESCRIPTION = {
 
 
 ARGUMENTS = {
-  Argument ("file", "DICOM file", "the DICOM file to be scanned.", AllowMultiple).type_file (),
+  Argument ("file", "DICOM file", "the DICOM file to be scanned.", true, true).type_file (),
   Argument::End
 };
 
@@ -58,17 +59,17 @@ EXECUTE {
   if (get_options (0).size()) print_DICOM_fields = true;
   if (get_options (1).size()) print_CSA_fields = true;
 
-  for (size_t n = 0; n < argument.size();  n++) {
+  for (guint n = 0; n < argument.size();  n++) {
 
-    if (Path::is_dir (argument[n].get_string())) {
-      Path::Dir* dir;
-      try { dir = new Path::Dir (argument[n].get_string()); }
-      catch (...) { throw Exception (std::string ("error opening folder \"") + argument[n].get_string() 
-          + "\": " + strerror (errno)); }
+    if (Glib::file_test (argument[n].get_string(), Glib::FILE_TEST_IS_DIR)) {
+      Glib::Dir* dir;
+      try { dir = new Glib::Dir (argument[n].get_string()); }
+      catch (...) { throw Exception (String ("error opening folder \"") + argument[n].get_string() 
+          + "\": " + Glib::strerror (errno)); }
       
-      std::string entry;
+      String entry;
       while ((entry = dir->read_name()).size()) {
-        if (reader.read (Path::join (argument[n].get_string(), entry), print_DICOM_fields, print_CSA_fields))
+        if (reader.read (Glib::build_filename (argument[n].get_string(), entry), print_DICOM_fields, print_CSA_fields))
           error ("error reading file \"" + reader.filename + "\"");
         else cout << reader << "\n";
       }

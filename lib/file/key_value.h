@@ -32,18 +32,18 @@ namespace MR {
     class KeyValue {
       public:
         KeyValue () { }
-        KeyValue (const std::string& file, const char* first_line = NULL) { open (file, first_line); }
+        KeyValue (const String& file, const gchar* first_line = NULL) { open (file, first_line); }
 
-        void  open (const std::string& file, const char* first_line = NULL);
+        void  open (const String& file, const gchar* first_line = NULL);
         bool  next ();
         void  close () { in.close(); }
 
-        const std::string& key () const throw ()   { return (K); }
-        const std::string& value () const throw () { return (V); }
-        const std::string& name () const throw ()  { return (filename); }
+        const String& key () const throw ()   { return (K); }
+        const String& value () const throw () { return (V); }
+        const String& name () const throw ()  { return (filename); }
 
       protected:
-        std::string K, V, filename;
+        String K, V, filename;
         std::ifstream in;
     };
 

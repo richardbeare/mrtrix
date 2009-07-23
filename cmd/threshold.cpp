@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 #include "histogram.h"
 #include "min_max.h"
 
@@ -82,7 +80,7 @@ EXECUTE {
   if (get_options(2).size()) invert = true;
   if (get_options(3).size()) use_NaN = true;
 
-  Image::Voxel in (*argument[0].get_image());
+  Image::Position in (*argument[0].get_image());
   Image::Header header (in.image.header());
 
   if (in.is_complex()) header.data_type = DataType::CFloat32;
@@ -91,7 +89,7 @@ EXECUTE {
     else header.data_type = DataType::Bit;
   }
 
-  Image::Voxel out (*argument[1].get_image (header));
+  Image::Position out (*argument[1].get_image (header));
 
   if (use_percentage) {
     float min, max;
@@ -99,7 +97,6 @@ EXECUTE {
     val = min + 0.01*val*(max-min);
   }
 
-  in.image.map();
   if (optimise) {
     Histogram hist (in);
     val = hist.first_min();
@@ -109,19 +106,18 @@ EXECUTE {
   float one  = invert ? zero : 1.0;
   zero = invert ? 1.0 : zero;
 
-  out.image.map();
-  ProgressBar::init (voxel_count(out), "thresholding at intensity " + str(val) + "...");
+  ProgressBar::init (out.voxel_count(), "thresholding at intensity " + str(val) + "...");
 
   do {
-    float v = in.real();
-    out.real() = v > val ? one : zero;
+    in = out;
+    float v = in.re();
+    out.re (v > val ? one : zero);
     if (out.is_complex()) {
-      v = in.imag();
-      out.imag() = v > val ? one : zero;
+      v = in.im();
+      out.im (v > val ? one : zero);
     }
 
     ProgressBar::inc();
-    in++;
   } while (out++);
 
   ProgressBar::done();

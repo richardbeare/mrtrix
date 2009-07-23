@@ -36,7 +36,7 @@ namespace MR {
   namespace File {
     namespace Dicom {
 
-      bool QuickScan::read (const std::string& file_name, bool print_DICOM_fields, bool print_CSA_fields)
+      bool QuickScan::read (const String& file_name, bool print_DICOM_fields, bool print_CSA_fields)
       {
         filename = file_name;
         modality.clear();
@@ -79,8 +79,8 @@ namespace MR {
             else if (item.is (0x0008U, 0x0008U)) {
               // exclude Siemens MPR info image:
               // TODO: could handle this by splitting on basis on this entry
-              std::vector<std::string> V (item.get_string());
-              for (uint n = 0; n < V.size(); n++) {
+              std::vector<String> V (item.get_string());
+              for (guint n = 0; n < V.size(); n++) {
                 if (uppercase (V[n]) == "CSAPARALLEL") return (true);
               }
             }

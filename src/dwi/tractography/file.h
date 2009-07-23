@@ -36,7 +36,7 @@ namespace MR {
 
       class Reader {
         public:
-          void open (const std::string& file, Properties& properties);
+          void open (const String& file, Properties& properties);
           bool next (std::vector<Point>& tck);
           void close ();
 
@@ -44,7 +44,7 @@ namespace MR {
           Ptr<MDS> mds;
           std::ifstream  in;
           DataType       dtype;
-          uint          count;
+          guint          count;
 
           Point get_next_point ()
           { 
@@ -64,31 +64,31 @@ namespace MR {
         public:
           Writer () : count (0), total_count (0), dtype (DataType::Float32) { dtype.set_byte_order_native(); }
 
-          void create (const std::string& file, const Properties& properties);
+          void create (const String& file, const Properties& properties);
           void append (const std::vector<Point>& tck)
           {
-            off64_t current (out.tellp());
+            goffset current (out.tellp());
             current -= 3*sizeof(float);
             if (tck.size()) {
               for (std::vector<Point>::const_iterator i = tck.begin()+1; i != tck.end(); ++i) write_next_point (*i);
-              write_next_point (Point (NAN, NAN, NAN));
+              write_next_point (Point (GSL_NAN, GSL_NAN, GSL_NAN));
             }
-            write_next_point (Point (INFINITY, INFINITY, INFINITY));
-            off64_t end (out.tellp());
+            write_next_point (Point (GSL_POSINF, GSL_POSINF, GSL_POSINF));
+            goffset end (out.tellp());
             out.seekp (current);
-            write_next_point (tck.size() ? tck[0] : Point (NAN, NAN, NAN));
+            write_next_point (tck.size() ? tck[0] : Point (GSL_NAN, GSL_NAN, GSL_NAN));
             out.seekp (end);
             
             count++;
           }
           void close ();
 
-          uint count, total_count;
+          guint count, total_count;
 
         protected:
           std::ofstream  out;
           DataType dtype;
-          off64_t  count_offset;
+          goffset  count_offset;
 
           void write_next_point (const Point& p) 
           {

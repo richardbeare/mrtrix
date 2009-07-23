@@ -50,7 +50,7 @@ namespace MR {
           double    xprev, yprev;
 
           void      move_slice (Slice::Current& S, float dist);
-          void      set_focus (Slice::Current& S, double x, double y);
+          void      set_focus (Slice::Current& S, gdouble x, gdouble y);
       };
 
     }

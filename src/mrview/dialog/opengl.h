@@ -40,7 +40,7 @@ namespace MR {
         class Columns : public Gtk::TreeModel::ColumnRecord {
           public:
             Columns () { add (key); add (value); }
-            Gtk::TreeModelColumn<std::string> key, value;
+            Gtk::TreeModelColumn<String> key, value;
         };
 
         Columns                       columns;

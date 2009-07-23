@@ -21,7 +21,7 @@
 */
 
 #include "app.h"
-#include "image/voxel.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -51,18 +51,15 @@ OPTIONS = {
 
 
 EXECUTE {
-  Image::Voxel ima (*argument[0].get_image());
+  Image::Position ima (*argument[0].get_image());
 
-  RefPtr<Image::Voxel> mask;
+  RefPtr<Image::Position> mask;
   std::vector<OptBase> opt = get_options (0); // mask
   if (opt.size()) {
-    mask = new Image::Voxel (*opt[0][0].get_image ());
+    mask = new Image::Position (*opt[0][0].get_image ());
     if (mask->dim(0) != ima.dim(0) || mask->dim(1) != ima.dim(1) || mask->dim(2) != ima.dim(2)) 
       throw Exception ("dimensions of mask image do not match that of data image - aborting");
-    mask->image.map();
   }
-
-  ima.image.map();
 
   bool header_shown = false;
   do {
@@ -70,12 +67,12 @@ EXECUTE {
     float min = INFINITY, max = -INFINITY;
     size_t count = 0;
 
-    if (mask) (*mask)[2] = 0; 
-    for (ima[2] = 0; ima[2] < ima.dim(2); ima[2]++) {
-      if (mask) (*mask)[1] = 0; 
-      for (ima[1] = 0; ima[1] < ima.dim(1); ima[1]++) {
-        if (mask) (*mask)[0] = 0; 
-        for (ima[0] = 0; ima[0] < ima.dim(0); ima[0]++) {
+    if (mask) mask->set(2,0); 
+    for (ima.set(2,0); ima[2] < ima.dim(2); ima.inc(2)) {
+      if (mask) mask->set(1,0); 
+      for (ima.set(1,0); ima[1] < ima.dim(1); ima.inc(1)) {
+        if (mask) mask->set(0,0); 
+        for (ima.set(0,0); ima[0] < ima.dim(0); ima.inc(0)) {
 
           bool skip = false;
           if (mask) if (mask->value() < 0.5) skip = true;
@@ -89,11 +86,11 @@ EXECUTE {
               count++;
             }
           }
-          if (mask) (*mask)[0]++;
+          if (mask) mask->inc (0);
         }
-        if (mask) (*mask)[1]++;
+        if (mask) mask->inc (1);
       }
-      if (mask) (*mask)[2]++;
+      if (mask) mask->inc (2);
     }
 
     if (count == 0) throw Exception ("no voxels in mask - aborting");
@@ -101,8 +98,8 @@ EXECUTE {
     mean /= double(count);
     std = sqrt(std/double(count) - mean*mean);
 
-    std::string s = "[ ";
-    for (size_t n = 3; n < ima.ndim(); n++) s += str(ima[n]) + " ";
+    String s = "[ ";
+    for (int n = 3; n < ima.ndim(); n++) s += str(ima[n]) + " ";
     s += "] ";
 
     if (!header_shown) print ("channel         mean        std. dev.   min         max         count\n");

@@ -71,7 +71,7 @@ namespace MR {
         bool                 show_focus () const;
         bool                 sidebar_displayed () const { return (dynamic_cast<const Gtk::CheckMenuItem&> (view_menu.items()[0]).get_active()); }
 
-        uint                axes[2];
+        guint                axes[2];
 
         Slice::Info          slice;
         static Window*       Main;

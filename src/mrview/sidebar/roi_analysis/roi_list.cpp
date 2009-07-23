@@ -131,7 +131,7 @@ namespace MR {
 
       void DP_ROIList::load (RefPtr<MR::Image::Object> image)
       { 
-        uint32_t colour = 0xFFFF00FF;
+        guint32 colour = 0xFFFF00FF;
         Glib::RefPtr<Gdk::Pixbuf> pix = Gdk::Pixbuf::create  (Gdk::COLORSPACE_RGB, false, 8, 16, 16);
         pix->fill (colour);
         Gtk::TreeModel::Row row = *(model->append());
@@ -202,7 +202,7 @@ namespace MR {
         if (dialog.run() == Gtk::RESPONSE_OK) {
           std::vector<RefPtr<MR::Image::Object> > selection = dialog.get_images();
           if (selection.size()) {
-            for (uint n = 0; n < selection.size(); n++) 
+            for (guint n = 0; n < selection.size(); n++) 
               load (selection[n]);
             Window::Main->update (&parent);
           }
@@ -220,7 +220,7 @@ namespace MR {
         Dialog::File dialog ("Create mask image", false, false);
 
         if (dialog.run() == Gtk::RESPONSE_OK) {
-          std::vector<std::string> selection = dialog.get_selection();
+          std::vector<String> selection = dialog.get_selection();
           if (selection.size()) {
             MR::Image::Header header (*Window::Main->image->image);
             header.data_type = DataType::Bit;
@@ -268,7 +268,7 @@ namespace MR {
 
 
 
-      void DP_ROIList::on_tick (const std::string& path) { Window::Main->update (&parent); }
+      void DP_ROIList::on_tick (const String& path) { Window::Main->update (&parent); }
       
       bool DP_ROIList::on_button_press (GdkEventButton* event) 
       {
@@ -292,7 +292,7 @@ namespace MR {
 
 
 
-      void DP_ROIList::process (double x, double y)
+      void DP_ROIList::process (gdouble x, gdouble y)
       {
         RefPtr<ROI> roi = row[columns.roi];
         Point pos (roi->mask->interp->R2P (position (x, y)));
@@ -308,7 +308,7 @@ namespace MR {
 
 
 
-      Point DP_ROIList::position (double x, double y)
+      Point DP_ROIList::position (gdouble x, gdouble y)
       {
         Pane& pane (Window::Main->pane());
         const Slice::Current S (pane);

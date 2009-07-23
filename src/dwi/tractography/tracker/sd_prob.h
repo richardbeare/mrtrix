@@ -23,7 +23,6 @@
 #ifndef __dwi_tractography_tracker_sd_prob_h__
 #define __dwi_tractography_tracker_sd_prob_h__
 
-#include "math/SH.h"
 #include "dwi/tractography/tracker/base.h"
 
 namespace MR {
@@ -39,7 +38,6 @@ namespace MR {
             float min_dpi, dist_spread;
             int   lmax, max_trials;
             bool  precomputed;
-            Math::SH::PrecomputedAL<float>*  precomputer;
 
             virtual bool  init_direction (const Point& seed_dir);
             virtual bool  next_point ();

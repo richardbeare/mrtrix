@@ -36,7 +36,7 @@ namespace MR {
 
 
 
-    void DisplayArea::resize (uint rows, uint columns)
+    void DisplayArea::resize (guint rows, guint columns)
     {
       NR = rows;
       NC = columns;
@@ -45,8 +45,8 @@ namespace MR {
 
       for (iterator it = panes.begin(); it != panes.end(); ++it) if (!(*it)) *it = new Pane;
 
-      for (uint row = 0; row < NR; row++)
-        for (uint col = 0; col < NC; col++)
+      for (guint row = 0; row < NR; row++)
+        for (guint col = 0; col < NC; col++)
           attach (*panes[col+row*NC], col, col+1, row, row+1);
     }
 

@@ -37,7 +37,7 @@
 
 #define BITMASK 0x01U << 7
 
-#ifdef BYTE_ORDER_IS_BIG_ENDIAN
+#if G_BYTE_ORDER == G_BIG_ENDIAN
 #define MRTRIX_IS_BIG_ENDIAN true
 #define TO_LE(v) swap(v)
 #define TO_BE(v) v
@@ -53,29 +53,38 @@ namespace MR {
    * @{ */
 
   namespace ByteOrder {
-    namespace {
-      template <typename T> inline void swap (T& a, T& b) throw () { T c (a); a = b; b = c; }
+
+    inline gint16    swap (gint16 v)          { return (GUINT16_SWAP_LE_BE  (v)); }
+    inline guint16   swap (guint16 v)         { return (GUINT16_SWAP_LE_BE (v)); }
+    inline gint32    swap (gint32 v)          { return (GUINT32_SWAP_LE_BE  (v)); }
+    inline guint32   swap (guint32 v)         { return (GUINT32_SWAP_LE_BE (v)); }
+    inline float32   swap (float32 v)
+    {
+      union { float32 f; guint32 i; } val = { v };
+      val.i = GUINT32_SWAP_LE_BE (val.i);
+      return (val.f);
     }
 
-    inline int16_t  swap (int16_t v)  { union { int16_t v; uint8_t i[2]; } val = { v }; swap (val.i[0], val.i[1]); return (val.v); }
-    inline uint16_t swap (uint16_t v) { union { uint16_t v; uint8_t i[2]; } val = { v }; swap (val.i[0], val.i[1]); return (val.v); }
-    inline int32_t  swap (int32_t v)  { union { int32_t v; uint8_t i[4]; } val = { v }; swap (val.i[0], val.i[3]); swap (val.i[1], val.i[2]); return (val.v); }
-    inline uint32_t swap (uint32_t v) { union { uint32_t v; uint8_t i[4]; } val = { v }; swap (val.i[0], val.i[3]); swap (val.i[1], val.i[2]); return (val.v); }
-    inline float32  swap (float32 v)  { union { float32 v; uint8_t i[4]; } val = { v }; swap (val.i[0], val.i[3]); swap (val.i[1], val.i[2]); return (val.v); }
-    inline float64  swap (float64 v)  { union { float64 v; uint32_t i[2]; } val = { v }; uint32_t t = swap (val.i[0]); val.i[0] = swap (val.i[1]); val.i[1] = t; return (val.v); }
+    inline float64 swap (float64 v)
+    {
+      union { float64 f; guint32 i[2]; } val = { v };
+      val.i[1] = swap (val.i[0]);
+      val.i[0] = swap (val.i[1]);
+      return (val.f);
+    }
 
-    inline int16_t LE (int16_t v)     { return (TO_LE (v)); }
-    inline int16_t BE (int16_t v)     { return (TO_BE (v)); }
-    inline uint16_t LE (uint16_t v)   { return (TO_LE (v)); }
-    inline uint16_t BE (uint16_t v)   { return (TO_BE (v)); }
-    inline int32_t LE (int32_t v)     { return (TO_LE (v)); }
-    inline int32_t BE (int32_t v)     { return (TO_BE (v)); }
-    inline uint32_t LE (uint32_t v)   { return (TO_LE (v)); }
-    inline uint32_t BE (uint32_t v)   { return (TO_BE (v)); }
-    inline float32 LE (float32 v)     { return (TO_LE (v)); }
-    inline float32 BE (float32 v)     { return (TO_BE (v)); }
-    inline float64 LE (float64 v)     { return (TO_LE (v)); }
-    inline float64 BE (float64 v)     { return (TO_BE (v)); }
+    inline gint16 LE (gint16 v)     { return (GINT16_TO_LE (v)); }
+    inline gint16 BE (gint16 v)     { return (GINT16_TO_BE (v)); }
+    inline guint16 LE (guint16 v)   { return (GUINT16_TO_LE (v)); }
+    inline guint16 BE (guint16 v)   { return (GUINT16_TO_BE (v)); }
+    inline gint32 LE (gint32 v)     { return (GINT32_TO_LE (v)); }
+    inline gint32 BE (gint32 v)     { return (GINT32_TO_BE (v)); }
+    inline guint32 LE (guint32 v)   { return (GUINT32_TO_LE (v)); }
+    inline guint32 BE (guint32 v)   { return (GUINT32_TO_BE (v)); }
+    inline float32 LE (float32 v)   { return (TO_LE (v)); }
+    inline float32 BE (float32 v)   { return (TO_BE (v)); }
+    inline float64 LE (float64 v)   { return (TO_LE (v)); }
+    inline float64 BE (float64 v)   { return (TO_BE (v)); }
   }
 
 
@@ -89,37 +98,37 @@ namespace MR {
   template <typename T> inline void put (const T value, void* address, bool is_big_endian = MRTRIX_IS_BIG_ENDIAN)
   { is_big_endian ? putBE<T> (value, address) : putLE<T> (value, address); } 
 
-  template <typename T> inline T getLE (const void* data, size_t i) { return (ByteOrder::LE (((T*) data)[i])); }
-  template <typename T> inline T getBE (const void* data, size_t i) { return (ByteOrder::BE (((T*) data)[i])); }
-  template <typename T> inline T get (const void* data, size_t i, bool is_big_endian = MRTRIX_IS_BIG_ENDIAN)
+  template <typename T> inline T getLE (const void* data, gsize i) { return (ByteOrder::LE (((T*) data)[i])); }
+  template <typename T> inline T getBE (const void* data, gsize i) { return (ByteOrder::BE (((T*) data)[i])); }
+  template <typename T> inline T get (const void* data, gsize i, bool is_big_endian = MRTRIX_IS_BIG_ENDIAN)
   { return (is_big_endian ? getBE<T> (data, i) : getLE<T> (data, i) ); } 
 
-  template <typename T> inline void putLE (const T value, void* data, size_t i) { ((T*) data)[i] = ByteOrder::LE (value); }
-  template <typename T> inline void putBE (const T value, void* data, size_t i) { ((T*) data)[i] = ByteOrder::BE (value); }
-  template <typename T> inline void put (const T value, void* data, size_t i, bool is_big_endian = MRTRIX_IS_BIG_ENDIAN)
+  template <typename T> inline void putLE (const T value, void* data, gsize i) { ((T*) data)[i] = ByteOrder::LE (value); }
+  template <typename T> inline void putBE (const T value, void* data, gsize i) { ((T*) data)[i] = ByteOrder::BE (value); }
+  template <typename T> inline void put (const T value, void* data, gsize i, bool is_big_endian = MRTRIX_IS_BIG_ENDIAN)
   { is_big_endian ? putBE<T> (value, data, i) : putLE<T> (value, data, i); } 
 
 
-  template <> inline int8_t get<int8_t> (const void* address, bool is_big_endian) { return (*((int8_t*) address)); }
-  template <> inline int8_t get<int8_t> (const void* data, size_t i, bool is_big_endian) { return (((int8_t *) data)[i]); }
+  template <> inline gint8 get<gint8> (const void* address, bool is_big_endian) { return (*((gint8*) address)); }
+  template <> inline gint8 get<gint8> (const void* data, gsize i, bool is_big_endian) { return (((gint8 *) data)[i]); }
 
-  template <> inline void put<int8_t> (const int8_t value, void* address, bool is_big_endian) { *((int8_t*) address) = value; }
-  template <> inline void put<int8_t> (const int8_t value, void* data, size_t i, bool is_big_endian) { ((int8_t *) data)[i] = value; }
+  template <> inline void put<gint8> (const gint8 value, void* address, bool is_big_endian) { *((gint8*) address) = value; }
+  template <> inline void put<gint8> (const gint8 value, void* data, gsize i, bool is_big_endian) { ((gint8 *) data)[i] = value; }
 
-  template <> inline uint8_t get<uint8_t> (const void* address, bool is_big_endian) { return (*((uint8_t*) address)); }
-  template <> inline uint8_t get<uint8_t> (const void* data, size_t i, bool is_big_endian) { return (((uint8_t *) data)[i]); }
+  template <> inline guint8 get<guint8> (const void* address, bool is_big_endian) { return (*((guint8*) address)); }
+  template <> inline guint8 get<guint8> (const void* data, gsize i, bool is_big_endian) { return (((guint8 *) data)[i]); }
 
-  template <> inline void put<uint8_t> (const uint8_t value, void* address, bool is_big_endian) { *((uint8_t*) address) = value; }
-  template <> inline void put<uint8_t> (const uint8_t value, void* data, size_t i, bool is_big_endian) { ((uint8_t*) data)[i] = value; }
+  template <> inline void put<guint8> (const guint8 value, void* address, bool is_big_endian) { *((guint8*) address) = value; }
+  template <> inline void put<guint8> (const guint8 value, void* data, gsize i, bool is_big_endian) { ((guint8*) data)[i] = value; }
 
 
-  template <> inline bool get<bool> (const void* data, size_t i, bool is_big_endian)
-  { return (((((uint8_t*) data)[i/8] << i%8) & BITMASK) ? true : false); } 
+  template <> inline bool get<bool> (const void* data, gsize i, bool is_big_endian)
+  { return (((((guint8*) data)[i/8] << i%8) & BITMASK) ? true : false); } 
 
-  template <> inline void put<bool> (const bool value, void* data, size_t i, bool is_big_endian)
+  template <> inline void put<bool> (const bool value, void* data, gsize i, bool is_big_endian)
   { 
-    if (value) ((uint8_t*) data)[i/8] |= (BITMASK >> i%8); 
-    else ((uint8_t*) data)[i/8] &= ~(BITMASK >> i%8); 
+    if (value) ((guint8*) data)[i/8] |= (BITMASK >> i%8); 
+    else ((guint8*) data)[i/8] &= ~(BITMASK >> i%8); 
   }
 
   /** @} */

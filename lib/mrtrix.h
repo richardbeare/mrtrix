@@ -56,24 +56,32 @@
 #include <cstdlib>
 #include <cmath>
 
-#include "types.h"
-#include "exception.h"
+#include <glib/gtypes.h>
+#include <glib/gutils.h>
+#include <glibmm/timer.h>
+#include <glibmm/miscutils.h>
+
+#include <gsl/gsl_version.h>
+#include <gsl/gsl_math.h>
+
+
 
 #define MRTRIX_MAJOR_VERSION 0
-#define MRTRIX_MINOR_VERSION 3
-#define MRTRIX_MICRO_VERSION 2
+#define MRTRIX_MINOR_VERSION 2
+#define MRTRIX_MICRO_VERSION 6
 
 
 /** Prints the file and line number. Useful for debugging purposes. */
-#define TEST std::cerr << MR::get_application_name() << ": line " << __LINE__ \
-  << " in " << __func__ << "() from file " << __FILE__ << "\n"
+#define TEST std::cerr << Glib::get_application_name() << ": line " << __LINE__ << " in " << __func__ << "() from file " << __FILE__ << "\n"
 
 
 /** Prints a variable name and its value, followed by the file and line number. Useful for debugging purposes. */
-#define VAR(variable) std::cerr << MR::get_application_name() << ": " << #variable << " = " << (variable) \
-  << " (in " << __func__ << "() from " << __FILE__  << ": " << __LINE__ << ")\n"
+#define VAR(variable) std::cerr << Glib::get_application_name() << ": " << #variable << " = " << (variable) << " (in " << __func__ << "() from " << __FILE__  << ": " << __LINE__ << ")\n"
+
+#define TRACE std::cerr << "in " << __PRETTY_FUNCTION__ << " (" << __FILE__ << ": " << __LINE__ << ")\n"
 
 #define MRTRIX_MAX_NDIMS 16
+#define BUSY_INTERVAL 0.1
 #define GUI_SPACING 5
 
 #define MODIFIERS ( \
@@ -88,15 +96,6 @@
         GDK_HYPER_MASK | \
         GDK_META_MASK )
 
-
-#ifndef MIN
-#  define MIN(a,b) ((a)<(b)?(a):(b))
-#endif 
-
-#ifndef MAX
-#  define MAX(a,b) ((a)>(b)?(a):(b))
-#endif 
-
 #define TMPFILE_ROOT "mrtrix-"
 #define TMPFILE_ROOT_LEN 7
 
@@ -106,7 +105,7 @@ namespace std {
   template <class T> inline ostream& operator<< (ostream& stream, const vector<T>& V)
   {
     stream << "[ ";
-    for (size_t n = 0; n < V.size(); n++) stream << V[n] << " ";
+    for (guint n = 0; n < V.size(); n++) stream << V[n] << " ";
     stream << "]";
     return (stream);
   }
@@ -116,11 +115,77 @@ namespace std {
 
 namespace MR {
 
-  const std::string& get_application_name ();
+  extern const guint mrtrix_major_version;
+  extern const guint mrtrix_minor_version;
+  extern const guint mrtrix_micro_version;
 
-  extern const uint mrtrix_major_version;
-  extern const uint mrtrix_minor_version;
-  extern const uint mrtrix_micro_version;
+
+  typedef std::string String;
+  typedef gfloat  float32;
+  typedef gdouble float64;
+
+
+
+
+  extern void (*print) (const String& msg);
+  extern void (*error) (const String& msg);
+  extern void (*info)  (const String& msg);
+  extern void (*debug) (const String& msg);
+
+
+
+
+
+
+
+
+  class Exception {
+    public:
+      Exception (const String& msg, int log_level = 1) : 
+        description (msg),
+        level (log_level) { display(); }
+
+      const String description;
+      const int level;
+
+      void  display () const {
+        if (level + level_offset < 2) error (description);
+        else if (level + level_offset == 2) info (description);
+        else debug (description);
+      }
+
+      class Lower {
+        public:
+          Lower (int amount = 1)  { level_offset = amount; }
+          ~Lower () { level_offset = 0; }
+          friend class Exception;
+      };
+
+    private:
+      static int level_offset;
+  };
+
+
+
+
+  namespace ProgressBar {
+
+    extern String message; 
+    extern guint current_val, percent;
+    extern float multiplier;
+    extern bool display, stop;
+    extern Glib::Timer stop_watch;
+
+    extern void (*init_func)();
+    extern void (*display_func)();
+    extern void (*done_func)();
+
+
+    void init (guint target, const String& msg);
+    int inc ();
+    void done ();
+  }
+
 
   namespace Image {
     typedef enum {
@@ -134,18 +199,52 @@ namespace MR {
   }
 
 
+  namespace ByteOrder {
+
+    gint16 swap (gint16 v);
+    guint16 swap (guint16 v);
+    gint32 swap (gint32 v);
+    guint32 swap (guint32 v);
+    float32 swap (float32 v);
+    float64 swap (float64 v);
+
+    gint16 LE (gint16 v);
+    gint16 BE (gint16 v);
+    guint16 LE (guint16 v);
+    guint16 BE (guint16 v);
+    gint32 LE (gint32 v);
+    gint32 BE (gint32 v);
+    guint32 LE (guint32 v);
+    guint32 BE (guint32 v);
+    float32 LE (float32 v);
+    float32 BE (float32 v);
+    float64 LE (float64 v);
+    float64 BE (float64 v);
+
+  }
 
 
-  inline std::istream& getline (std::istream& stream, std::string& string) 
+
+
+
+
+  inline bool is_temporary (const String& file) { return (Glib::path_get_basename(file).compare (0, TMPFILE_ROOT_LEN, TMPFILE_ROOT) == 0); }
+
+
+
+
+
+
+  inline std::istream& getline (std::istream& stream, String& string) 
   {
     std::getline (stream, string);
-    if (string.size() > 0) if (string[string.size()-1] == 015) string.resize (string.size()-1);
+    if (string[string.size()-1] == 015) string.resize (string.size()-1);
     return (stream);
   }
 
 
 
-  template <class T> inline std::string str (const T& value)
+  template <class T> inline String str (const T& value)
   { 
     std::ostringstream stream; 
     try { stream << value; }
@@ -156,7 +255,7 @@ namespace MR {
 
 
 
-  template <class T> inline T to (const std::string& string)
+  template <class T> inline T to (const String& string)
   {
     std::istringstream stream (string);
     T value;
@@ -166,77 +265,77 @@ namespace MR {
   }
 
 
-  inline std::string printf (const char* format, ...)
+  inline String printf (const gchar* format, ...)
   {
     va_list list;
     va_start (list, format);
-    size_t len = vsnprintf (NULL, 0, format, list) + 1;
+    guint len = g_vsnprintf (NULL, 0, format, list) + 1;
     va_end (list);
-    char buf[len];
+    gchar buf[len];
     va_start (list, format);
-    vsnprintf (buf, len, format, list);
+    g_vsnprintf (buf, len, format, list);
     va_end (list);
     return (buf);
   }
 
 
-  inline std::string strip (const std::string& string, const char* ws = " \t\n", bool left = true, bool right = true)
+  inline String strip (const String& string, const gchar* ws = " \t\n", bool left = true, bool right = true)
   {
     std::string::size_type start = ( left ? string.find_first_not_of (ws) : 0 );
-    if (start == std::string::npos) return ("");
-    std::string::size_type end   = ( right ? string.find_last_not_of (ws) + 1 : std::string::npos );
+    if (start == String::npos) return ("");
+    std::string::size_type end   = ( right ? string.find_last_not_of (ws) + 1 : String::npos );
     return (string.substr (start, end - start));
   }
 
 
 
-  inline void  replace (std::string& string, char orig, char final)
+  inline void  replace (String& string, gchar orig, gchar final)
   {
-    for (std::string::iterator i = string.begin(); i != string.end(); ++i)
+    for (String::iterator i = string.begin(); i != string.end(); ++i)
       if (*i == orig) *i = final;
   }
 
 
-  inline std::string& lowercase (std::string& string)
+  inline String& lowercase (String& string)
   {
-    for (std::string::iterator i = string.begin(); i != string.end(); ++i) *i = tolower (*i);
+    for_each (string.begin(), string.end(), tolower);
     return (string);
   }
 
-  inline std::string& uppercase (std::string& string)
+  inline String& uppercase (String& string)
   {
-    for (std::string::iterator i = string.begin(); i != string.end(); ++i) *i = toupper (*i);
+    for_each (string.begin(), string.end(), toupper);
     return (string);
   }
 
-  inline std::string lowercase (const std::string& string)
+  inline String lowercase (const String& string)
   {
-    std::string ret; ret.resize (string.size());
+    String ret; ret.resize (string.size());
     transform (string.begin(), string.end(), ret.begin(), tolower);
     return (ret);
   }
 
-  inline std::string uppercase (const std::string& string)
+  inline String uppercase (const String& string)
   {
-    std::string ret; ret.resize (string.size());
+    String ret; ret.resize (string.size());
     transform (string.begin(), string.end(), ret.begin(), toupper);
     return (ret);
   }
 
-  std::vector<std::string> split (const std::string& string, const char* delimiters = " \t\n", bool ignore_empty_fields = false); 
+  std::vector<String> split (const String& string, const gchar* delimiters = " \t\n", bool ignore_empty_fields = false); 
 
-  inline std::string join (std::vector<std::string>& V, const std::string& delimiter)
+  inline String join (std::vector<String>& V, const String& delimiter)
   {
-    std::string ret;
+    String ret;
     if (V.empty()) return (ret);
     ret = V[0];
-    for (std::vector<std::string>::iterator i = V.begin()+1; i != V.end(); ++i)
+    for (std::vector<String>::iterator i = V.begin()+1; i != V.end(); ++i)
       ret += delimiter + *i;
     return (ret);
   }
 
-  std::vector<float> parse_floats (const std::string& spec);
-  std::vector<int>   parse_ints (const std::string& spec, int last = INT_MAX);
+  std::vector<gfloat> parse_floats (const String& spec);
+  std::vector<int>   parse_ints (const String& spec, int last = G_MAXINT);
 
   inline int round (float x) { return (int (x + (x > 0.0 ? 0.5 : -0.5))); }
 
@@ -277,7 +376,7 @@ namespace MR {
 
   template <class T> inline void set_all (std::vector<T>& V, const T& value)
   {
-    for (size_t n = 0; n < V.size(); n++) V[n] = value;
+    for (guint n = 0; n < V.size(); n++) V[n] = value;
   }
 
 
@@ -285,7 +384,7 @@ namespace MR {
 
   template <class T> inline bool get_next (std::vector<T>& pos, const std::vector<T>& limits)
   {
-    size_t axis = 0;
+    guint axis = 0;
     while (axis < limits.size()) {
       pos[axis]++;
       if (pos[axis] < limits[axis]) return (true);
@@ -295,6 +394,29 @@ namespace MR {
     return (false);
   }
 
+
+
+
+
+
+
+
+  namespace ProgressBar {
+
+    inline int inc ()
+    {
+      current_val++; 
+      if (!display) return (stop);
+      guint t = gsl_isnan (multiplier) ? (guint) (stop_watch.elapsed() / BUSY_INTERVAL) : (guint) (multiplier*current_val);
+      if (percent != t) {
+        percent = t;
+        display_func();
+      }
+      return (stop);
+    }
+
+    inline void done () { if (display) done_func(); }
+  }
 
 
 

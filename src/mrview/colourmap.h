@@ -32,11 +32,11 @@
 namespace MR {
   namespace Viewer {
 
-    inline uint8_t clamp (float val)
+    inline guint8 clamp (float val)
     {
       if (val < 0.0) return (0);
       if (val > 255.0) return (255);
-      return ((uint8_t) (val+0.5)); 
+      return ((guint8) (val+0.5)); 
     }
 
 
@@ -45,22 +45,20 @@ namespace MR {
 
     namespace ColourMap {
 
-      void   map (uint index, float val, uint8_t* RGB);
+      void   map (guint index, float val, guint8* RGB);
 
-      void   grey (float val, uint8_t* RGB);
-      void   hot  (float val, uint8_t* RGB);
-      void   cool (float val, uint8_t* RGB);
-      void   jet  (float val, uint8_t* RGB);
-      void   RGB (float val[3], uint8_t* RGB);
-      void   Z (float re, float im, uint8_t* RGB);
-
-
-      void   get (uint mode, MR::Image::Position& image, MR::Image::OutputType format, float* val);
-      void   get (uint mode, MR::Image::Interp& interp, MR::Image::OutputType format, float* val);
-      void   map (uint mode, const Scaling& scale, MR::Image::Position& image, MR::Image::OutputType format, uint8_t* RGB);
-      void   map (uint mode, const Scaling& scale, MR::Image::Interp& interp, MR::Image::OutputType format, uint8_t* RGB);
+      void   grey (float val, guint8* RGB);
+      void   hot  (float val, guint8* RGB);
+      void   cool (float val, guint8* RGB);
+      void   jet  (float val, guint8* RGB);
+      void   RGB (float val[3], guint8* RGB);
+      void   Z (float re, float im, guint8* RGB);
 
 
+      void   get (guint mode, MR::Image::Position& image, MR::Image::OutputType format, float* val);
+      void   get (guint mode, MR::Image::Interp& interp, MR::Image::OutputType format, float* val);
+      void   map (guint mode, const Scaling& scale, MR::Image::Position& image, MR::Image::OutputType format, guint8* RGB);
+      void   map (guint mode, const Scaling& scale, MR::Image::Interp& interp, MR::Image::OutputType format, guint8* RGB);
 
 
 
@@ -68,7 +66,9 @@ namespace MR {
 
 
 
-      inline void   map (uint index, float val, uint8_t* RGB)
+
+
+      inline void   map (guint index, float val, guint8* RGB)
       {
         switch (index) {
           case 0: grey (val, RGB); break;
@@ -83,11 +83,11 @@ namespace MR {
 
 
 
-      inline void   grey (float val, uint8_t* RGB) { RGB[0] = RGB[1] = RGB[2] = clamp (val); }
+      inline void   grey (float val, guint8* RGB) { RGB[0] = RGB[1] = RGB[2] = clamp (val); }
 
 
 
-      inline void   hot  (float val, uint8_t* RGB)
+      inline void   hot  (float val, guint8* RGB)
       {
         RGB[0] = clamp (2.7213*val);
         RGB[1] = clamp (2.7213*(val-94.1));
@@ -96,7 +96,7 @@ namespace MR {
 
 
 
-      inline void   cool (float val, uint8_t* RGB)
+      inline void   cool (float val, guint8* RGB)
       {
         RGB[0] = clamp (2.0*(val-64.0));
         if (val < 128.0) {
@@ -112,7 +112,7 @@ namespace MR {
 
 
 
-      inline void jet  (float val, uint8_t* RGB)
+      inline void jet  (float val, guint8* RGB)
       {
         RGB[0] = clamp (4.0*(val < 192.0 ? val-96.0 : 288.0-val));
         RGB[1] = clamp (4.0*(val < 128.0 ? val-32.0 : 224.0-val));
@@ -122,7 +122,7 @@ namespace MR {
 
 
 
-      inline void RGB (float val[3], uint8_t* RGB)
+      inline void RGB (float val[3], guint8* RGB)
       {
         RGB[0] = clamp (val[0]);
         RGB[1] = clamp (val[1]);
@@ -132,7 +132,7 @@ namespace MR {
 
 
 
-      inline void Z (float re, float im, uint8_t* RGB)
+      inline void Z (float re, float im, guint8* RGB)
       {
         float r = sqrt (re*re + im*im);
         float p = atan2f (im, re);
@@ -147,9 +147,9 @@ namespace MR {
 
 
 
-      inline void get (uint mode, MR::Image::Position& image, MR::Image::OutputType format, float* val)
+      inline void get (guint mode, MR::Image::Position& image, MR::Image::OutputType format, float* val)
       {
-        val[1] = val[2] = NAN;
+        val[1] = val[2] = GSL_NAN;
         if (mode == COLOURMAP_COMPLEX) format = MR::Image::RealImag;
         image.get (format, val[0], val[1]);
 
@@ -157,7 +157,7 @@ namespace MR {
           val[0] = fabs (val[0]);
           val[1] = val[2] = 0.0;
           if (image.ndim() > 3) {
-            int pos = image[3];
+            gint pos = image[3];
             if (image[3] < (int) image.dim(3)-1) {
               float im;
               image.inc(3);
@@ -178,13 +178,13 @@ namespace MR {
 
 
 
-      inline void get (uint mode, MR::Image::Interp& interp, MR::Image::OutputType format, float* val)
+      inline void get (guint mode, MR::Image::Interp& interp, MR::Image::OutputType format, float* val)
       {
         if (mode == COLOURMAP_RGB) {
           interp.abs (format, val[0], val[1]);
           val[1] = val[2] = 0.0;
           if (interp.ndim() > 3) {
-            int pos = interp[3];
+            gint pos = interp[3];
             if (interp[3] < (int) interp.dim(3)) {
               float im;
               interp.inc(3);
@@ -198,7 +198,7 @@ namespace MR {
           }
         }
         else {
-          val[1] = val[2] = NAN;
+          val[1] = val[2] = GSL_NAN;
           if (mode == COLOURMAP_COMPLEX) format = MR::Image::RealImag;
           interp.get (format, val[0], val[1]);
         }
@@ -209,7 +209,7 @@ namespace MR {
 
 
 
-      inline void map (uint mode, const Scaling& scale, MR::Image::Position& image, MR::Image::OutputType format, uint8_t* rgb)
+      inline void map (guint mode, const Scaling& scale, MR::Image::Position& image, MR::Image::OutputType format, guint8* rgb)
       {
         float val[3];
         get (mode, image, format, val);
@@ -228,7 +228,7 @@ namespace MR {
 
 
 
-      inline void map (uint mode, const Scaling& scale, MR::Image::Interp& interp, MR::Image::OutputType format, uint8_t* rgb)
+      inline void map (guint mode, const Scaling& scale, MR::Image::Interp& interp, MR::Image::OutputType format, guint8* rgb)
       {
         float val[3];
         get (mode, interp, format, val);

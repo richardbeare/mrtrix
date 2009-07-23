@@ -26,7 +26,7 @@ namespace MR {
   namespace File {
     namespace Dicom {
 
-      UnorderedMap<uint32_t, const char*>::Type Element::dict;
+      UnorderedMap<guint32, const gchar*>::Type Element::dict;
 
 
       void Element::init_dict()

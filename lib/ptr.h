@@ -61,7 +61,7 @@ namespace MR {
   template <class T> class RefPtr
   {
     public:
-      explicit RefPtr (T* p = NULL) throw () : ptr (p), count (new uint) { *count = 1; }
+      explicit RefPtr (T* p = NULL) throw () : ptr (p), count (new guint) { *count = 1; }
       RefPtr (const RefPtr& R) throw () : ptr (R.ptr), count (R.count) { ++*count; }
       ~RefPtr () { if (*count == 1) { delete ptr; delete count; } else --*count; }
 
@@ -80,7 +80,7 @@ namespace MR {
       {
         if (ptr == p) return (*this);
         if (*count == 1) delete ptr; 
-        else { --*count; count = new uint; *count = 1; }
+        else { --*count; count = new guint; *count = 1; }
         ptr = p; 
         return (*this); 
       }
@@ -115,7 +115,7 @@ namespace MR {
 
     private:
       T*     ptr;
-      uint* count;
+      guint* count;
   };
 
 }

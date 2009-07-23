@@ -27,6 +27,7 @@
 #include <gdkmm/cursor.h>
 #include <gtkmm/stock.h>
 #include <gtkmm/dialog.h>
+#include <glibmm/miscutils.h>
 
 #include "dialog/file.h"
 #include "image/format/list.h"
@@ -45,7 +46,7 @@ namespace MR {
   namespace Dialog {
 
 
-    std::string File::cwd;
+    String File::cwd;
     int File::window_position_x = -1; 
     int File::window_position_y = -1; 
     int File::window_size_x = 500; 
@@ -54,7 +55,7 @@ namespace MR {
 
 
 
-    File::File (const std::string& message, bool multiselection, bool images_only) :
+    File::File (const String& message, bool multiselection, bool images_only) :
       Gtk::Dialog (message, true, false),
       up_button (Gtk::Stock::GO_UP),
       home_button (Gtk::Stock::HOME),
@@ -125,7 +126,7 @@ namespace MR {
       selection_entry.signal_changed().connect (sigc::mem_fun (*this, &File::on_selection_entry));
       selection_entry.signal_activate().connect (sigc::mem_fun (*this, &File::on_selection_activated));
 
-      if (!cwd.size()) cwd = Path::cwd();
+      if (!cwd.size()) cwd = Glib::get_current_dir();
       show_all_children();
       realize();
       move (window_position_x, window_position_y);
@@ -159,7 +160,7 @@ namespace MR {
 
       try {
         if (dir) delete dir;
-        dir = new Path::Dir (cwd);
+        dir = new Glib::Dir (cwd);
       }
       catch (...) {
         error ("error reading folder \"" + cwd + "\"");
@@ -176,7 +177,7 @@ namespace MR {
 
     void File::on_up ()
     {
-      cwd = Path::dirname (cwd);
+      cwd = Glib::path_get_dirname (cwd);
       update();
     }
 
@@ -184,7 +185,7 @@ namespace MR {
 
     void File::on_home ()
     {
-      cwd = Path::home();
+      cwd = Glib::get_home_dir();
       update();
     }
 
@@ -199,7 +200,7 @@ namespace MR {
 
     void File::on_path ()
     {
-      if (Path::is_file (path_entry.get_text()))
+      if (Glib::file_test (path_entry.get_text(), Glib::FILE_TEST_IS_DIR))
         cwd = path_entry.get_text();
       update();
     }
@@ -212,7 +213,7 @@ namespace MR {
     {
       Gtk::TreeModel::iterator iter = folder_list->get_iter (path);
       if (iter) {
-        cwd = Path::join (cwd, (*iter)[folder_columns.name]);
+        cwd = Glib::build_filename (cwd, (*iter)[folder_columns.name]);
         update();
       }
     }
@@ -242,7 +243,7 @@ namespace MR {
           if (rows.size()) {
             updating_selection = true;
             if (rows.size() == 1) {
-              std::string name ((*file_list->get_iter (rows[0]))[file_columns.name]);
+              String name ((*file_list->get_iter (rows[0]))[file_columns.name]);
               selection_entry.set_text (name);
             }
             else selection_entry.set_text ("");
@@ -252,7 +253,7 @@ namespace MR {
           Gtk::TreeModel::iterator iter = files.get_selection()->get_selected();
           if (file_list->iter_is_valid (iter)) { 
             updating_selection = true;
-            std::string name ((*iter)[file_columns.name]);
+            String name ((*iter)[file_columns.name]);
             selection_entry.set_text (name);
           }
         }
@@ -277,8 +278,8 @@ namespace MR {
 
     bool File::on_idle ()
     {
-      std::string entry;
-      for (uint n = 0; n < 10; n++) {
+      String entry;
+      for (guint n = 0; n < 10; n++) {
         entry = dir->read_name();
 
         if (!entry.size()) {
@@ -295,9 +296,9 @@ namespace MR {
         }
 
         if (entry[0] != '.') {
-          std::string path (Path::join (cwd, entry));
+          String path (Glib::build_filename (cwd, entry));
           if (folders_read) {
-            if (Path::is_file (path)) {
+            if (Glib::file_test (path, Glib::FILE_TEST_IS_REGULAR)) {
               if (filter_images) check_image (path, entry);
               else {
                 Gtk::TreeModel::Row row = *(file_list->append());
@@ -305,7 +306,7 @@ namespace MR {
               }
             }
           }
-          else if (Path::is_dir (Path::join (cwd, entry))) {
+          else if (Glib::file_test (Glib::build_filename (cwd, entry), Glib::FILE_TEST_IS_DIR)) {
             Gtk::TreeModel::Row row = *(folder_list->append());
             row[folder_columns.name] = entry;
           }
@@ -331,7 +332,7 @@ namespace MR {
       if (!series) return (false);
 
 
-      std::string text = "patient: " + series->study->patient->name 
+      String text = "patient: " + series->study->patient->name 
         + "\n\tDOB: " + MR::File::Dicom::format_date (series->study->patient->DOB) + "\n\tID: " + series->study->patient->ID
         + "\nstudy: " + series->study->name + "\n\tdate: " + MR::File::Dicom::format_date (series->study->date) + " at "
         + MR::File::Dicom::format_time (series->study->time) +"\n\tID: " + series->study->ID
@@ -346,10 +347,10 @@ namespace MR {
 
 
 
-    inline void File::check_image (const std::string& path, const std::string& base)
+    inline void File::check_image (const String& path, const String& base)
     {
-      for (const char** ext = Image::Format::known_extensions; *ext; ext++) {
-        if (Path::has_suffix (base, *ext)) {
+      for (const gchar** ext = Image::Format::known_extensions; *ext; ext++) {
+        if (Glib::str_has_suffix (base, *ext)) {
           Gtk::TreeModel::Row row = *(file_list->append());
           row[file_columns.name] = base;
           return;
@@ -364,7 +365,7 @@ namespace MR {
 
 
 
-    void File::check_dicom (const std::string& path, const std::string& base)
+    void File::check_dicom (const String& path, const String& base)
     {
       Exception::Lower _ES (1);
       MR::File::Dicom::QuickScan reader;
@@ -415,19 +416,19 @@ namespace MR {
 
 
 
-    std::vector<std::string> File::get_selection ()
+    std::vector<String> File::get_selection ()
     {
-      std::vector<std::string> sel;
+      std::vector<String> sel;
       std::vector<Gtk::TreePath> rows (files.get_selection()->get_selected_rows());
       if (rows.size()) {
         for (std::vector<Gtk::TreePath>::iterator it = rows.begin(); it != rows.end(); ++it) {
-          std::string name ((*file_list->get_iter (*it))[file_columns.name]);
-          sel.push_back (Path::join (cwd, name));
+          String name ((*file_list->get_iter (*it))[file_columns.name]);
+          sel.push_back (Glib::build_filename (cwd, name));
         }
       }
       else {
-        std::string name (strip (selection_entry.get_text()));
-        if (name.size()) sel.push_back (Path::join (cwd, name));
+        String name (strip (selection_entry.get_text()));
+        if (name.size()) sel.push_back (Glib::build_filename (cwd, name));
       }
       return (sel);
     }
@@ -453,7 +454,7 @@ namespace MR {
               MR::File::Dicom::dicom_to_mapper (ima->M, ima->H, series_v);
               ima->setup();
             }
-            else ima->open (Path::join (cwd, row[file_columns.name]));
+            else ima->open (Glib::build_filename (cwd, row[file_columns.name]));
 
             V.push_back (ima);
           }
@@ -463,7 +464,7 @@ namespace MR {
       else {
         try {
           RefPtr<Image::Object> ima (new Image::Object);
-          ima->open (Path::join (cwd, strip (selection_entry.get_text())));
+          ima->open (Glib::build_filename (cwd, strip (selection_entry.get_text())));
           V.push_back (ima);
         }
         catch (...) { }

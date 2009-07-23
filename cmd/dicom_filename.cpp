@@ -30,7 +30,7 @@ using namespace File::Dicom;
 
 SET_VERSION_DEFAULT;
   
-void make_valid (std::string& str, const std::string& alternate) {
+void make_valid (String& str, const String& alternate) {
   if (str.empty()) { str = alternate; return; }
   str = strip (str);
   std::string::size_type pos = 0;
@@ -59,7 +59,7 @@ EXECUTE {
   Element item;
   item.set (argument[0].get_string());
 
-  std::string patient_name, patient_id, study_date, study_name, study_time, series_name, series_number, instance_number, SOP_instance_number;
+  String patient_name, patient_id, study_date, study_name, study_time, series_name, series_number, instance_number, SOP_instance_number;
 
   while (item.read()) {
     if      (item.is (0x0008U, 0x0020U)) study_date = item.get_string()[0];

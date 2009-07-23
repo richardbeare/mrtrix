@@ -30,12 +30,12 @@ namespace MR {
 
   class Point {
     public:
-      Point ()                               { set (NAN, NAN, NAN); }
+      Point ()                               { set (GSL_NAN, GSL_NAN, GSL_NAN); }
       Point (float x, float y, float z)      { set (x, y, z); }
       explicit Point (const float point[3])  { set (point); }
 
-      bool         operator! () const        { return (isnan(p[0]) || isnan(p[1]) || isnan(p[2])); }
-      bool         valid () const            { return (!(isnan(p[0]) || isnan(p[1]) || isnan(p[2]))); }
+      bool         operator! () const        { return (gsl_isnan(p[0]) || gsl_isnan(p[1]) || gsl_isnan(p[2])); }
+      bool         valid () const            { return (!(gsl_isnan(p[0]) || gsl_isnan(p[1]) || gsl_isnan(p[2]))); }
 
       float*       get ()                    { return (p); }
       const float* get () const              { return (p); }
@@ -64,7 +64,7 @@ namespace MR {
       float        dot (const Point& A) const           { return (p[0]*A[0] + p[1]*A[1] + p[2]*A[2]); }
       Point        cross (const Point& A)               { return (Point (p[1]*A[2]-p[2]*A[1], p[2]*A[0]-p[0]*A[2], p[0]*A[1]-p[1]*A[0])); }
 
-      void         invalidate ()                        { set (NAN, NAN, NAN); }
+      void         invalidate ()                        { set (GSL_NAN, GSL_NAN, GSL_NAN); }
       static Point Invalid;
 
     protected:

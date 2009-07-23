@@ -40,15 +40,15 @@ namespace MR {
 
         class DTStream : public Base {
           public:
-            DTStream (Image::Object& source_image, Properties& properties, const Math::Matrix<float>& inverse_bmat);
+            DTStream (Image::Object& source_image, Properties& properties, const Math::Matrix& inverse_bmat);
             ~DTStream () { gsl_eigen_symmv_free (eigv_work); gsl_vector_free (eigen_values); }
 
           protected:
             virtual bool  init_direction (const Point& seed_dir);
             virtual bool  next_point ();
 
-            const Math::Matrix<double>& binv;
-            Math::Matrix<double>  V, D;
+            const Math::Matrix& binv;
+            Math::Matrix  V, D;
             float         min_dp;
 
             gsl_vector*                 eigen_values;
@@ -86,8 +86,8 @@ namespace MR {
           D(0,2) = D(2,0) = dt[4];
           D(1,2) = D(2,1) = dt[5]; 
 
-          gsl_eigen_symmv (&D, eigen_values, &V, eigv_work);
-          gsl_eigen_symmv_sort (eigen_values, &V, GSL_EIGEN_SORT_VAL_ASC);
+          gsl_eigen_symmv (D.get_gsl_matrix(), eigen_values, V.get_gsl_matrix(), eigv_work);
+          gsl_eigen_symmv_sort (eigen_values, V.get_gsl_matrix(), GSL_EIGEN_SORT_VAL_ASC);
 
           dir[0] = V(0,2);
           dir[1] = V(1,2);

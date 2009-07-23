@@ -27,13 +27,14 @@
 
 #include "dwi/tractography/tracker/dt_stream.h"
 #include "dwi/gradient.h"
+#include "math/linalg.h"
 
 namespace MR {
   namespace DWI {
     namespace Tractography {
       namespace Tracker {
 
-        DTStream::DTStream (Image::Object& source_image, Properties& properties, const Math::Matrix<float>& inverse_bmat) : 
+        DTStream::DTStream (Image::Object& source_image, Properties& properties, const Math::Matrix& inverse_bmat) : 
           Base (source_image, properties), 
           binv (inverse_bmat),
           V(3,3), 
@@ -67,7 +68,7 @@ namespace MR {
           float fa = get_EV (pos);
           if (fa < init_threshold) return (true);
 
-          if (isnan (seed_dir[0])) {
+          if (gsl_isnan (seed_dir[0])) {
             if (rng.uniform() < 0.5) {
               dir[0] = -dir[0];
               dir[1] = -dir[1];

@@ -21,11 +21,8 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
 #include "image/interp.h"
-#include "image/misc.h"
-#include "math/LU.h"
+#include "math/linalg.h"
 
 using namespace std; 
 using namespace MR; 
@@ -38,7 +35,7 @@ DESCRIPTION = {
 };
 
 ARGUMENTS = {
-  Argument ("input", "input image", "input image to be transformed.").type_image_in (),
+  Argument ("input", "input image", "input image to be transformed.", true, true).type_image_in (),
   Argument ("output", "output image", "the output image.").type_image_out (),
   Argument::End
 };
@@ -67,7 +64,7 @@ OPTIONS = {
 
 
 EXECUTE {
-  Math::Matrix<float> T(4,4);
+  Math::Matrix T(4,4);
   T.identity();
   bool transform_supplied = false;
 
@@ -76,7 +73,7 @@ EXECUTE {
     transform_supplied = true;
     T.load (opt[0][0].get_string());
     if (T.rows() != 4 || T.columns() != 4) 
-      throw Exception (std::string("transform matrix supplied in file \"") + opt[0][0].get_string() + "\" is not 4x4");
+      throw Exception (String("transform matrix supplied in file \"") + opt[0][0].get_string() + "\" is not 4x4");
   }
 
   bool replace = get_options(1).size(); // replace
@@ -88,9 +85,9 @@ EXECUTE {
   if (transform_supplied) {
 
     if (inverse) {
-      Math::Matrix<float> I;
-      Math::LU::inv (I, T);
-      T.swap (I);
+      Math::Matrix I;
+      Math::invert (I, T);
+      T = I;
     }
 
     opt = get_options(4); // reference 
@@ -99,31 +96,31 @@ EXECUTE {
       const Image::Header& ref_header (opt[0][0].get_image()->header());
 
       if (get_options(5).size()) { // flipx 
-        Math::Matrix<float> R(4,4);
+        Math::Matrix R(4,4);
         R.identity();
         R(0,0) = -1.0;
-        R(0,3) = (ref_header.dim(0)-1) * ref_header.vox(0);
+        R(0,3) = (ref_header.axes.dim[0]-1) * ref_header.axes.vox[0];
 
-        Math::Matrix<float> M;
-        Math::mult (M, R, T);
+        Math::Matrix M;
+        M.multiply (R, T);
 
-        R(0,3) = (header.dim(0)-1) * header.vox(0);
+        R(0,3) = (header.axes.dim[0]-1) * header.axes.vox[0];
 
-        Math::mult (T, M, R);
+        T.multiply (M, R);
       }
 
-      Math::Matrix<float> M;
-      Math::mult (M, ref_header.transform(), T);
-      T.swap (M);
+      Math::Matrix M;
+      M.multiply (ref_header.transform(), T);
+      T = M;
     }
 
 
 
-    if (replace) header.transform_matrix = T;
+    if (replace) header.set_transform (T);
     else {
-      Math::Matrix<float> M;
-      Math::mult (M, T, header.transform());
-      header.transform_matrix.swap (M);
+      Math::Matrix M;
+      M.multiply (T, header.transform());
+      header.set_transform (M);
     }
 
     header.comments.push_back ("transform modified");
@@ -132,22 +129,21 @@ EXECUTE {
 
   opt = get_options(3); // template : need to reslice
   if (opt.size()) {
-    Math::Matrix<float> Mi(4,4);
-    Image::Transform::R2P (Mi, in_obj);
+    Math::Matrix Mi (header.R2P());
 
     Image::Header template_header (opt[0][0].get_image()->header());
-    header.axes[0].dim = template_header.axes[0].dim;
-    header.axes[1].dim = template_header.axes[1].dim;
-    header.axes[2].dim = template_header.axes[2].dim;
-    header.axes[0].vox = template_header.axes[0].vox;
-    header.axes[1].vox = template_header.axes[1].vox;
-    header.axes[2].vox = template_header.axes[2].vox;
-    header.transform_matrix = template_header.transform();
+    header.axes.dim[0] = template_header.axes.dim[0];
+    header.axes.dim[1] = template_header.axes.dim[1];
+    header.axes.dim[2] = template_header.axes.dim[2];
+    header.axes.vox[0] = template_header.axes.vox[0];
+    header.axes.vox[1] = template_header.axes.vox[1];
+    header.axes.vox[2] = template_header.axes.vox[2];
+    header.set_transform (template_header.transform());
     header.comments.push_back ("resliced to reference image \"" + template_header.name + "\"");
 
-    Math::Matrix<float> M, M2(4,4);
-    Image::Transform::P2R (M2, in_obj);
-    Math::mult (M, Mi, M2);
+    Math::Matrix M;
+    M.multiply (Mi, header.P2R());
+    VAR (M);
 
     float R[] = { 
       M(0,0), M(0,1), M(0,2), M(0,3), 
@@ -155,24 +151,22 @@ EXECUTE {
       M(2,0), M(2,1), M(2,2), M(2,3)
     };
 
-    Image::Voxel in_vox (in_obj);
-    Image::Interp<Image::Voxel> in (in_vox);
-    Image::Voxel out (*argument[1].get_image (header));
+    in_obj.optimise();
+    Image::Interp in (in_obj);
+    Image::Position out (*argument[1].get_image (header));
     Point pos;
 
-    in_obj.map();
-    out.image.map();
-
-    ProgressBar::init (voxel_count(out), "reslicing image...");
+    ProgressBar::init (out.voxel_count(), "reslicing image...");
     do { 
-      for (out[2] = 0; out[2] < out.dim(2); out[2]++) {
-        for (out[1] = 0; out[1] < out.dim(1); out[1]++) {
+      for (out.set(2,0); out[2] < out.dim(2); out.inc(2)) {
+        for (out.set(1,0); out[1] < out.dim(1); out.inc(1)) {
           pos[0] = R[1]*out[1] + R[2]*out[2] + R[3];
           pos[1] = R[5]*out[1] + R[6]*out[2] + R[7];
           pos[2] = R[9]*out[1] + R[10]*out[2] + R[11];
-          for (out[0] = 0; out[0] < out.dim(0); out[0]++) {
+          for (out.set(0,0); out[0] < out.dim(0); out.inc(0)) {
             in.P (pos);
-            out.value() = !in ? 0.0 : in.value();
+            if (!in) out.value (0.0);
+            else out.value (in.value());
             pos[0] += R[0];
             pos[1] += R[4];
             pos[2] += R[8];
@@ -184,11 +178,11 @@ EXECUTE {
     ProgressBar::done();
   }
   else {
-    Image::Voxel in (in_obj);
-    Image::Voxel out (*argument[1].get_image (header));
-    ProgressBar::init (voxel_count(out), "copying image data...");
+    Image::Position in (in_obj);
+    Image::Position out (*argument[1].get_image (header));
+    ProgressBar::init (out.voxel_count(), "copying image data...");
     do { 
-      out.value() = in.value();
+      out.value (in.value());
       in++;
       ProgressBar::inc();
     } while (out++);

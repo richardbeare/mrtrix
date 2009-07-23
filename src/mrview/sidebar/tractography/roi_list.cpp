@@ -127,7 +127,7 @@ namespace MR {
               dist -= normal.dot (roi->position);
               normal = roi->position + dist*normal;
 
-              float radius2 = Math::pow2 (roi->radius);
+              float radius2 = gsl_pow_2 (roi->radius);
               if (dist*dist < radius2) {
                 //float thickness = 3.0;
 
@@ -265,7 +265,7 @@ namespace MR {
 
       void ROIList::compile_circle ()
       {
-        for (uint x = 0; x < NUM_CIRCLE; x++) {
+        for (guint x = 0; x < NUM_CIRCLE; x++) {
           float a = 2.0*M_PI*(float)x / (float)NUM_CIRCLE;
           circle_vertices[2*x]   = cos (a);
           circle_vertices[2*x+1] = sin (a);
@@ -278,11 +278,11 @@ namespace MR {
       void ROIList::compile_sphere ()
       {
         /*
-        for (uint x = 0; x < NUM_SPHERE; x++) {
+        for (guint x = 0; x < NUM_SPHERE; x++) {
           float cx = cos (M_PI*(float)x/(float)NUM_SPHERE);
           float sx = sin (M_PI*(float)x/(float)NUM_SPHERE);
           glBegin (GL_LINE_LOOP);
-          for (uint y = 0; y < 2*NUM_SPHERE; y++) {
+          for (guint y = 0; y < 2*NUM_SPHERE; y++) {
             float cy = cos (M_PI*(float)y/(float)NUM_SPHERE);
             float sy = sin (M_PI*(float)y/(float)NUM_SPHERE);
             glVertex3f (cx*sy, sx*sy, cy);
@@ -290,11 +290,11 @@ namespace MR {
           glEnd();
         }
 
-        for (uint y = 1; y < NUM_SPHERE; y++) {
+        for (guint y = 1; y < NUM_SPHERE; y++) {
           float cy = cos (M_PI*(float)y/(float)NUM_SPHERE);
           float sy = sin (M_PI*(float)y/(float)NUM_SPHERE);
           glBegin (GL_LINE_LOOP);
-          for (uint x = 0; x < 2*NUM_SPHERE; x++) {
+          for (guint x = 0; x < 2*NUM_SPHERE; x++) {
             float cx = cos (M_PI*(float)x/(float)NUM_SPHERE);
             float sx = sin (M_PI*(float)x/(float)NUM_SPHERE);
             glVertex3f (cx*sy, sx*sy, cy);

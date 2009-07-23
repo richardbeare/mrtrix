@@ -25,13 +25,16 @@
 
 */
 
-#include "file/path.h"
+#include <glib/gstdio.h>
+#include <glibmm/miscutils.h>
+#include <glibmm/fileutils.h>
+
 #include "file/config.h"
 
 #define CONFIG_FILE "mrtrix.conf"
 
-#ifdef WINDOWS
-#define SYS_CONFIG_FILE "C:\\" CONFIG_FILE
+#ifdef G_OS_WIN32
+#define SYS_CONFIG_FILE "C:" G_DIR_SEPARATOR_S CONFIG_FILE
 #define USER_CONFIG_FILE CONFIG_FILE
 #else 
 #define SYS_CONFIG_FILE "/etc/" CONFIG_FILE
@@ -43,11 +46,11 @@
 namespace MR {
   namespace File {
 
-    std::map<std::string, std::string> Config::config;
+    std::map<String, String> Config::config;
 
     void Config::init ()
     {
-      if (Path::is_file (SYS_CONFIG_FILE)) {
+      if (Glib::file_test (SYS_CONFIG_FILE, Glib::FILE_TEST_IS_REGULAR)) {
         try { 
           KeyValue kv (SYS_CONFIG_FILE);
           while (kv.next()) { config[kv.key()] = kv.value(); }
@@ -55,8 +58,8 @@ namespace MR {
         catch (...) { }
       }
 
-      std::string path = Path::join (Path::home(), USER_CONFIG_FILE);
-      if (Path::is_file (path)) {
+      String path = Glib::build_filename (Glib::get_home_dir(), USER_CONFIG_FILE);
+      if (Glib::file_test (path, Glib::FILE_TEST_IS_REGULAR)) {
         try {
           KeyValue kv (path);
           while (kv.next()) { config[kv.key()] = kv.value(); }
@@ -67,9 +70,9 @@ namespace MR {
 
 
 
-    bool Config::get_bool (const std::string& key, bool default_value) 
+    bool Config::get_bool (const String& key, bool default_value) 
     {
-      std::string value = get (key); 
+      String value = get (key); 
       if (value.empty()) return (default_value);
       value = lowercase (value);
       if (value == "true") return (true);
@@ -79,9 +82,9 @@ namespace MR {
     }
 
 
-    int Config::get_int (const std::string& key, int default_value) 
+    int Config::get_int (const String& key, int default_value) 
     {
-      std::string value = get (key); 
+      String value = get (key); 
       if (value.empty()) return (default_value);
       try { return (to<int> (value)); }
       catch (...) { 
@@ -91,9 +94,9 @@ namespace MR {
     }
 
 
-    float Config::get_float (const std::string& key, float default_value) 
+    float Config::get_float (const String& key, float default_value) 
     {
-      std::string value = get (key); 
+      String value = get (key); 
       if (value.empty()) return (default_value);
       try { return (to<float> (value)); }
       catch (...) { 

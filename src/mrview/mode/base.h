@@ -45,7 +45,7 @@ namespace MR {
       class Base 
       {
         public:
-          Base (Pane& segment, uint type_identifier) : pane (segment), type_id (type_identifier), OS (1), OS_x (0), OS_y (0) { }   
+          Base (Pane& segment, guint type_identifier) : pane (segment), type_id (type_identifier), OS (1), OS_x (0), OS_y (0) { }   
           virtual ~Base () { }
 
           virtual void      draw () = 0;
@@ -56,18 +56,18 @@ namespace MR {
           virtual bool      on_button_release (GdkEventButton* event);
           virtual bool      on_motion (GdkEventMotion* event);
           virtual bool      on_scroll (GdkEventScroll* event);
-          uint             type () const { return (type_id); }
+          guint             type () const { return (type_id); }
           Pane&             pane;
 
-          void              set_oversampling (uint factor = 1, uint x = 0, uint y = 0) { OS = factor; OS_x = x; OS_y = y; }
-          uint             get_oversampling () const { return (OS); }
+          void              set_oversampling (guint factor = 1, guint x = 0, guint y = 0) { OS = factor; OS_x = x; OS_y = y; }
+          guint             get_oversampling () const { return (OS); }
 
         protected:
-          uint             type_id, OS, OS_x, OS_y;
+          guint             type_id, OS, OS_x, OS_y;
       };
 
 
-      RefPtr<Base> create (Pane& parent, uint index);
+      RefPtr<Base> create (Pane& parent, guint index);
 
     }
   }

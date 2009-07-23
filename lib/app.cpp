@@ -25,23 +25,21 @@
 
 */
 
-#include <gsl/gsl_version.h>
+#include <glibmm/stringutils.h>
 
 #include "app.h"
-#include "progressbar.h"
-#include "file/path.h"
 #include "file/config.h"
+
 
 #define NUM_DEFAULT_OPTIONS 5
 
-namespace MR {
 
-  const std::string& get_application_name () { return (App::name()); }
+namespace MR {
 
   namespace ProgressBar {
     namespace {
 
-      const char* busy[] = {
+      const gchar* busy[] = {
         ".    ",
         " .   ",
         "  .  ",
@@ -61,16 +59,16 @@ namespace MR {
 
       void display_func_cmdline ()
       {
-        if (isnan (multiplier)) 
-          fprintf (stderr, "\r%s: %s %s", App::name().c_str(), message.c_str(), busy[percent%8]);
-        else fprintf (stderr, "\r%s: %s %3u%%", App::name().c_str(), message.c_str(), uint(percent));
+        if (gsl_isnan (multiplier)) 
+          fprintf (stderr, "\r%s: %s %s", Glib::get_application_name().c_str(), message.c_str(), busy[percent%8]);
+        else fprintf (stderr, "\r%s: %s %3u%%", Glib::get_application_name().c_str(), message.c_str(), percent);
       }
 
 
       void done_func_cmdline () 
       { 
-        if (isnan (multiplier)) fprintf (stderr, "\r%s: %s  - ok\n", App::name().c_str(), message.c_str()); 
-        else fprintf (stderr, "\r%s: %s %3u%%\n", App::name().c_str(), message.c_str(), 100); 
+        if (gsl_isnan (multiplier)) fprintf (stderr, "\r%s: %s  - ok\n", Glib::get_application_name().c_str(), message.c_str()); 
+        else fprintf (stderr, "\r%s: %s %3u%%\n", Glib::get_application_name().c_str(), message.c_str(), 100); 
       }
     }
   }
@@ -79,21 +77,21 @@ namespace MR {
 
 
 
-  void cmdline_print (const std::string& msg) { std::cout << msg; }
+  void cmdline_print (const String& msg) { std::cout << msg; }
 
-  void cmdline_error (const std::string& msg) 
+  void cmdline_error (const String& msg) 
   {
-    if (App::log_level) std::cerr << App::name() << ": " << msg << "\n"; 
+    if (App::log_level) std::cerr << Glib::get_application_name() << ": " << msg << "\n"; 
   }
 
-  void cmdline_info  (const std::string& msg) 
+  void cmdline_info  (const String& msg) 
   { 
-    if (App::log_level > 1) std::cerr << App::name() << " [INFO]: " <<  msg << "\n"; 
+    if (App::log_level > 1) std::cerr << Glib::get_application_name() << " [INFO]: " <<  msg << "\n"; 
   }
 
-  void cmdline_debug (const std::string& msg)
+  void cmdline_debug (const String& msg)
   { 
-    if (App::log_level > 2) std::cerr << App::name() << " [DEBUG]: " <<  msg << "\n"; 
+    if (App::log_level > 2) std::cerr << Glib::get_application_name() << " [DEBUG]: " <<  msg << "\n"; 
   }
 
 
@@ -102,15 +100,15 @@ namespace MR {
 
   namespace {
 
-    void print_formatted_paragraph (const std::string& header, const std::string& text, int header_indent, int indent, int width)
+    void print_formatted_paragraph (const String& header, const String& text, int header_indent, int indent, int width)
     {
       int current = fprintf (stderr, "%-*s%-*s ", header_indent, "", indent-header_indent-2, header.c_str());
 
-      std::string::size_type start = 0, end;
+      String::size_type start = 0, end;
       do {
         end = start;
-        while (!isspace(text [end]) && end < text.size()) end++;
-        std::string token (text.substr (start, end-start));
+        while (!g_ascii_isspace(text [end]) && end < text.size()) end++;
+        String token (text.substr (start, end-start));
         if (current + (int) token.size() + 1 >= width) 
           current = fprintf (stderr, "\n%*s%s", indent, "", token.c_str()) - 1;
         else current += fprintf (stderr, " %s", token.c_str());
@@ -133,13 +131,12 @@ namespace MR {
 
 
   int App::log_level = 1;
-  std::string          App::application_name;
-  const char**    App::command_description = NULL;
+  const gchar**   App::command_description = NULL;
   const Argument* App::command_arguments = NULL;
   const Option*   App::command_options = NULL;
-  const uint*     App::version = NULL;
-  const char*     App::copyright = NULL;
-  const char*     App::author = NULL;
+  const guint*    App::version = NULL;
+  const gchar*    App::copyright = NULL;
+  const gchar*    App::author = NULL;
 
   const Option App::default_options[] = {
     Option ("info", "display information", "display information messages."),
@@ -152,34 +149,34 @@ namespace MR {
 
 
 
-  uint App::match_option (const char* stub) const
+  guint App::match_option (const gchar* stub) const
   {
-    std::vector<uint> candidates;
-    std::string s (stub);
+    std::vector<guint> candidates;
+    String s (stub);
 
-    for (uint n = 0; command_options[n].is_valid(); n++) 
+    for (guint n = 0; command_options[n].is_valid(); n++) 
       if (s.compare (0, s.size(), command_options[n].sname, s.size()) == 0)
         candidates.push_back (n);
 
-    for (uint n = 0; n < NUM_DEFAULT_OPTIONS; n++) 
+    for (guint n = 0; n < NUM_DEFAULT_OPTIONS; n++) 
       if (s.compare (0, s.size(), default_options[n].sname, s.size()) == 0)
         candidates.push_back (n + DEFAULT_OPTIONS_OFFSET);
 
-    if (candidates.size() == 0) return (UINT_MAX);
+    if (candidates.size() == 0) return (G_MAXUINT);
     if (candidates.size() == 1) return (candidates[0]);
 
-    s = "several matches possible for option \"-" + s + "\": \"-" + option_name (candidates[0]) + "\", \"-" + option_name (candidates[1]) + "\"";
-    for (uint n = 2; n < candidates.size(); n++) { s += ", \"-"; s += option_name (candidates[n]); s += "\""; }
+    s = "several matches possible for option \"" + s + "\": \"" + option_name (candidates[0]) + "\", \"" + option_name (candidates[1]) + "\"";
+    for (guint n = 2; n < candidates.size(); n++) { s += ", "; s += option_name (candidates[n]); s += "\""; }
     throw Exception (s);
   }
 
 
 
 
-  App::App (int argc, char** argv, const char** cmd_desc, const MR::Argument* cmd_args, const MR::Option* cmd_opts, 
-          const uint* cmd_version, const char* cmd_author, const char* cmd_copyright)
+  App::App (int argc, gchar** argv, const gchar** cmd_desc, const MR::Argument* cmd_args, const MR::Option* cmd_opts, 
+          const guint* cmd_version, const char* cmd_author, const char* cmd_copyright)
   {
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
     // force stderr to be unbuffered, and stdout to be line-buffered:
     setvbuf (stderr, NULL, _IONBF, 0);
     setvbuf (stdout, NULL, _IOLBF, 0);
@@ -199,11 +196,12 @@ namespace MR {
       }
     }
 
-    application_name = Path::basename (argv[0]);
-#ifdef WINDOWS
-    if (Path::has_suffix (application_name, ".exe")) 
+    String application_name (Glib::path_get_basename(argv[0]));
+#ifdef G_OS_WIN32
+    if (Glib::str_has_suffix (application_name, ".exe")) 
       application_name.erase (application_name.size()-4);
 #endif
+    Glib::set_application_name (application_name);
 
     log_level = 1;
 
@@ -227,7 +225,7 @@ namespace MR {
 
   App::~App () { }
 
-  void App::run (int argc, char** argv)
+  void App::run (int argc, gchar** argv)
   {
     parse_arguments ();
     execute ();
@@ -237,17 +235,17 @@ namespace MR {
 
 
 
-  void App::sort_arguments (int argc, char** argv)
+  void App::sort_arguments (int argc, gchar** argv)
   {
     for (int n = 1; n < argc; n++) {
-      const char* arg = argv[n];
+      const gchar* arg = argv[n];
       if (arg[0] == '-' && arg[1]) {
 
         while (*arg == '-') arg++;
-        uint opt = match_option (arg);
+        guint opt = match_option (arg);
 
-        if (opt == UINT_MAX) {
-          throw Exception (std::string ("unknown option \"-") + arg + "\"");
+        if (opt == G_MAXUINT) {
+          throw Exception (String ("unknown option \"-") + arg + "\"");
         }
         else if (opt == DEFAULT_OPTIONS_OFFSET) {
           if (log_level < 2) log_level = 2;
@@ -264,20 +262,16 @@ namespace MR {
           throw 0;
         }
         else if (opt == DEFAULT_OPTIONS_OFFSET+4) {
-          std::printf ("%s: part of MRtrix %d.%d.%d\n%d bit %s version, built " __DATE__ ", using GSL %s\nAuthor: %s\n%s\n",
-              App::name().c_str(), mrtrix_major_version, mrtrix_minor_version, mrtrix_micro_version,
-              uint(8*sizeof(size_t)), 
-#ifdef NDEBUG
-              "release"
-#else
-              "debug"
-#endif
-              , gsl_version, author, copyright);
+          std::printf ("%s %d.%d.%d\n  Author: %s\n  %s\n  using MRtrix %d.%d.%d, glib %d.%d.%d, GSL %s (build " __DATE__ ")\n",
+              Glib::get_application_name().c_str(), 
+              version[0], version[1], version[2], author, copyright,
+              mrtrix_major_version, mrtrix_minor_version, mrtrix_micro_version, 
+              glib_major_version, glib_minor_version, glib_micro_version, gsl_version);
           throw 0;
         }
         else {
           if (n + (int) command_options[opt].size() >= argc) {
-            throw Exception (std::string ("not enough parameters to option \"-") + command_options[opt].sname + "\"");
+            throw Exception (String ("not enough parameters to option \"-") + command_options[opt].sname + "\"");
           }
 
           parsed_options.push_back (ParsedOption());
@@ -297,7 +291,7 @@ namespace MR {
 
   void App::parse_arguments ()
   {
-    uint num_args_required = 0, num_command_arguments = 0;
+    guint num_args_required = 0, num_command_arguments = 0;
     bool has_optional_arguments = false;
     for (const Argument* arg = App::command_arguments; arg->is_valid(); arg++) {
       num_command_arguments++;
@@ -311,13 +305,13 @@ namespace MR {
     if (!has_optional_arguments && num_args_required != parsed_arguments.size()) 
       throw Exception ("expected exactly " + str (num_args_required) + " arguments (" + str (parsed_arguments.size()) + " supplied)");
 
-    uint optional_argument = UINT_MAX;
-    for (uint n = 0; n < parsed_arguments.size(); n++) {
+    guint optional_argument = G_MAXUINT;
+    for (guint n = 0; n < parsed_arguments.size(); n++) {
 
       if (n < optional_argument) 
         if (!command_arguments[n].mandatory || command_arguments[n].allow_multiple) optional_argument = n;
 
-      uint index = n;
+      guint index = n;
       if (n >= optional_argument) {
         if ((int) (num_args_required - optional_argument) < (int) (parsed_arguments.size() - n)) index = optional_argument;
         else index = num_args_required - parsed_arguments.size() + n + (command_arguments[optional_argument].mandatory ? 0 : 1);
@@ -327,34 +321,34 @@ namespace MR {
 
       argument.push_back (ArgBase (command_arguments[index], parsed_arguments[n]));
       if (argument.back().type() == Undefined) 
-        throw Exception (std::string ("error parsing argument \"") + command_arguments[index].sname + 
+        throw Exception (String ("error parsing argument \"") + command_arguments[index].sname + 
               "\" (specified as \"" + parsed_arguments[n] + "\")"); 
     }
 
-    for (uint n = 0; n < parsed_options.size(); n++) {
+    for (guint n = 0; n < parsed_options.size(); n++) {
       option.push_back (OptBase());
       option.back().index = parsed_options[n].index;
-      for (uint a = 0; a < parsed_options[n].args.size(); a++) {
+      for (guint a = 0; a < parsed_options[n].args.size(); a++) {
         ArgBase arg (command_options[parsed_options[n].index][a], parsed_options[n].args[a]);
         if (arg.type() == Undefined) 
-          throw Exception (std::string ("error parsing argument \"") + command_options[parsed_options[n].index][a].sname 
+          throw Exception (String ("error parsing argument \"") + command_options[parsed_options[n].index][a].sname 
                 + "\" of option \"-" + command_options[parsed_options[n].index].sname
                 + "\" (specified as \"" + parsed_options[n].args[a] + "\")");
         option.back().push_back (arg);
       }
     }
 
-    for (uint index = 0; command_options[index].is_valid(); index++) {
-      uint count = 0;
-      for (uint n = 0; n < option.size(); n++)
+    for (guint index = 0; command_options[index].is_valid(); index++) {
+      guint count = 0;
+      for (guint n = 0; n < option.size(); n++)
         if (option[n].index == index)
           count++;
 
       if (command_options[index].mandatory && count < 1) 
-        throw Exception (std::string ("mandatory option \"") + command_options[index].sname + "\" must be specified");
+        throw Exception (String ("mandatory option \"") + command_options[index].sname + "\" must be specified");
 
       if (!command_options[index].allow_multiple && count > 1) 
-        throw Exception (std::string ("multiple instances of option \"") +  command_options[index].sname + "\" are not allowed");
+        throw Exception (String ("multiple instances of option \"") +  command_options[index].sname + "\" are not allowed");
     }
 
   }
@@ -366,18 +360,18 @@ namespace MR {
 
   void App::print_help () const
   {
-    fprintf (stderr, "%s: part of the MRtrix package\n\n", App::name().c_str());
+    fprintf (stderr, "%s: part of the MRtrix package\n\n", Glib::get_application_name().c_str());
     if (command_description[0]) {
       print_formatted_paragraph ("PURPOSE:", command_description[0], HELP_PURPOSE_INDENT);
       fprintf (stderr, "\n");
-      for (const char** p = command_description+1; *p; p++) {
+      for (const gchar** p = command_description+1; *p; p++) {
         print_formatted_paragraph ("", *p, HELP_PURPOSE_INDENT);
         fprintf (stderr, "\n");
       }
     }
     else fprintf (stderr, "(no description available)\n\n");
 
-    fprintf (stderr, "%-*s%s [ options ]", HELP_INDENT, "SYNTAX:", App::name().c_str());
+    fprintf (stderr, "%-*s%s [ options ]", HELP_INDENT, "SYNTAX:", Glib::get_application_name().c_str());
     for (const Argument* arg = command_arguments; arg->is_valid(); arg++) {
       if (!arg->mandatory) fprintf (stderr, " [");
       fprintf (stderr, " %s", arg->sname);
@@ -399,17 +393,17 @@ namespace MR {
 
     fprintf (stderr, "OPTIONS:\n\n");
     for (const Option* opt = command_options; opt->is_valid(); opt++) {
-      std::string text ("-");
+      String text ("-");
       text += opt->sname;
-      for (uint n = 0; n < opt->size(); n++) { text += " "; text += (*opt)[n].sname; }
+      for (guint n = 0; n < opt->size(); n++) { text += " "; text += (*opt)[n].sname; }
       print_formatted_paragraph (text, opt->desc, HELP_OPTION_INDENT);
-      for (uint n = 0; n < opt->size(); n++) 
-        print_formatted_paragraph ("", std::string ("\"") + (*opt)[n].sname + "\": " + (*opt)[n].desc, HELP_OPTION_INDENT);
+      for (guint n = 0; n < opt->size(); n++) 
+        print_formatted_paragraph ("", String ("\"") + (*opt)[n].sname + "\": " + (*opt)[n].desc, HELP_OPTION_INDENT);
       fprintf (stderr, "\n");
     }
 
-    for (uint n = 0; n < NUM_DEFAULT_OPTIONS; n++) {
-      std::string text ("-");
+    for (guint n = 0; n < NUM_DEFAULT_OPTIONS; n++) {
+      String text ("-");
       text += default_options[n].sname;
       print_formatted_paragraph (text, default_options[n].desc, HELP_OPTION_INDENT);
       fprintf (stderr, "\n");
@@ -459,7 +453,7 @@ namespace MR {
 
   void App::print_full_usage () const
   {
-    for (const char** p = command_description; *p; p++) 
+    for (const gchar** p = command_description; *p; p++) 
       std::cout << *p << "\n";
 
     for (const Argument* arg = command_arguments; arg->is_valid(); arg++) 
@@ -468,7 +462,7 @@ namespace MR {
     for (const Option* opt = command_options; opt->is_valid(); opt++) 
       print_full_option_usage (*opt);
 
-    for (uint n = 0; n < NUM_DEFAULT_OPTIONS; n++) 
+    for (guint n = 0; n < NUM_DEFAULT_OPTIONS; n++) 
       print_full_option_usage (default_options[n]);
   }
 
@@ -481,18 +475,18 @@ namespace MR {
   {
     stream 
       << "----------------------------------\n  COMMAND: " 
-      << App::name()
+      << Glib::get_application_name()
       << "\n----------------------------------\n\n";
 
-    const char** c = App::command_description;
+    const gchar** c = App::command_description;
     while (*c) { stream << *c << "\n\n"; c++; }
 
     stream << "ARGUMENTS:\n\n";
-    for (uint n = 0; App::command_arguments[n].is_valid(); n++)
+    for (guint n = 0; App::command_arguments[n].is_valid(); n++)
       stream << "[" << n << "] " << App::command_arguments[n] << "\n\n";
 
     stream << "OPTIONS:\n\n";
-    for (uint n = 0; App::command_options[n].is_valid(); n++)
+    for (guint n = 0; App::command_options[n].is_valid(); n++)
       stream << App::command_options[n] << "\n";
 
     return (stream);

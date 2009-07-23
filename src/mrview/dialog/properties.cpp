@@ -63,7 +63,7 @@ namespace MR {
         row = *(model->append());
         row[columns.key] = "Comments";
         row[columns.value] = H.comments[0];
-        for (uint n = 1; n < H.comments.size(); n++) {
+        for (guint n = 1; n < H.comments.size(); n++) {
           Gtk::TreeModel::Row childrow = *(model->append (row.children()));
           childrow[columns.value] = H.comments[n];
         }
@@ -73,7 +73,7 @@ namespace MR {
       row[columns.key] = "Dimensions";
       if (!H.axes.ndim()) row[columns.value] = "none";
       else {
-        std::string s (str (H.axes.dim[0]));
+        String s (str (H.axes.dim[0]));
         for (int n = 1; n < H.axes.ndim(); n++) s += " x " + str (H.axes.dim[n]);
         row[columns.value] = s;
       }
@@ -81,7 +81,7 @@ namespace MR {
       row = *(model->append());
       row[columns.key] = "Voxel size";
       if (H.axes.ndim()) {
-        std::string s (str (H.axes.vox[0]));
+        String s (str (H.axes.vox[0]));
         for (int n = 1; n < H.axes.ndim(); n++) s += " x " + str (H.axes.vox[n]);
         row[columns.value] = s;
       }
@@ -102,7 +102,7 @@ namespace MR {
       row = *(model->append());
       row[columns.key] = "Data layout";
       if (H.axes.ndim()) {
-        std::string s;
+        String s;
         for (int n = 0; n < H.axes.ndim(); n++) s += H.axes.axis[n] == MR::Image::Axis::undefined ? "? " : ( H.axes.forward[n] ? '+' : '-' ) + str (H.axes.axis[n]) + " ";
         row[columns.value] = s;
       }
@@ -117,10 +117,10 @@ namespace MR {
       if (!H.transform().is_valid()) row[columns.value] = "unspecified";
       else {
         row[columns.value] = "4 x 4";
-        for (uint i = 0; i < H.transform().rows(); i++) {
+        for (guint i = 0; i < H.transform().rows(); i++) {
           Gtk::TreeModel::Row childrow = *(model->append (row.children()));
-          std::string s;
-          for (uint j = 0; j < H.transform().columns(); j++) s += str (H.transform()(i,j)) + " ";
+          String s;
+          for (guint j = 0; j < H.transform().columns(); j++) s += str (H.transform()(i,j)) + " ";
           childrow[columns.value] = s;
         }
       }

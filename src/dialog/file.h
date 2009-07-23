@@ -32,8 +32,8 @@
 #include <gtkmm/paned.h>
 #include <gtkmm/entry.h>
 #include <gtkmm/scrolledwindow.h>
+#include <glibmm/fileutils.h>
 
-#include "file/path.h"
 #include "file/dicom/tree.h"
 
 
@@ -55,27 +55,27 @@ namespace MR {
     class File : public Gtk::Dialog
     {
       public:
-        File (const std::string& message, bool multiselection, bool expand_DICOM);
+        File (const String& message, bool multiselection, bool expand_DICOM);
         ~File ();
 
-        void                               set_selection (const std::string& filename) { selection_entry.set_text (filename); }
-        std::vector<std::string>                get_selection ();
+        void                               set_selection (const String& filename) { selection_entry.set_text (filename); }
+        std::vector<String>                get_selection ();
         std::vector<RefPtr<Image::Object> >  get_images ();
 
-        static const std::string& get_cwd () { if (!cwd.size()) cwd = Path::cwd(); return (cwd); }
+        static const String& get_cwd () { if (!cwd.size()) cwd = Glib::get_current_dir(); return (cwd); }
 
       protected:
 
         class FolderColumns : public Gtk::TreeModel::ColumnRecord {
           public:
             FolderColumns () { add (name); }
-            Gtk::TreeModelColumn<std::string> name;
+            Gtk::TreeModelColumn<String> name;
         };
 
         class FileColumns : public Gtk::TreeModel::ColumnRecord {
           public:
             FileColumns () { add (name); add (series); }
-            Gtk::TreeModelColumn<std::string> name;
+            Gtk::TreeModelColumn<String> name;
             Gtk::TreeModelColumn<RefPtr<MR::File::Dicom::Series> > series;
         };
 
@@ -90,8 +90,8 @@ namespace MR {
         Gtk::VBox              main_box;
         Gtk::Label             path_label, selection_label;
         Gtk::ScrolledWindow    files_viewport, folders_viewport;
-        Path::Dir*             dir;
-        std::string                 next_file;
+        Glib::Dir*             dir;
+        String                 next_file;
         bool                   filter_images, folders_read, updating_selection;
 
         Glib::RefPtr<Gtk::ListStore> file_list;
@@ -112,12 +112,12 @@ namespace MR {
         bool                   on_idle ();
         bool                   on_file_tooltip (int x, int y, bool keyboard_tooltip, const Glib::RefPtr<Gtk::Tooltip>& tooltip);
 
-        static std::string          cwd;
+        static String          cwd;
         static int             window_position_x, window_position_y, window_size_x, window_size_y;
 
         void                   update ();
-        void                   check_image (const std::string& path, const std::string& base);
-        void                   check_dicom (const std::string& path, const std::string& base);
+        void                   check_image (const String& path, const String& base);
+        void                   check_dicom (const String& path, const String& base);
         void                   update_dicom ();
         MR::File::Dicom::Tree  dicom_tree;
     };

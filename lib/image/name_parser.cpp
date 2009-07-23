@@ -21,6 +21,9 @@
 */
 
 #include <algorithm>
+#include <glib/gprintf.h>
+#include <glibmm/miscutils.h>
+#include <glibmm/stringutils.h>
 
 #include "image/name_parser.h"
 
@@ -29,9 +32,9 @@ namespace MR {
 
     namespace {
 
-      inline bool is_seq_char (char c) { return (isdigit (c) || c == ',' || c == ':' || c == '%'); } 
+      inline bool is_seq_char (gchar c) { return (g_ascii_isdigit (c) || c == ',' || c == ':' || c == '%'); } 
 
-      inline int last_bracket (const std::string& str, int from, char c)
+      inline int last_bracket (const String& str, int from, gchar c)
       {
         while (str[from] != c && from >= 0) from--;
         return (from);
@@ -40,7 +43,7 @@ namespace MR {
       inline bool in_seq (const std::vector<int>& seq, int val) 
       {
         if (seq.size() == 0) return (true);
-        for (uint i = 0; i < seq.size(); i++) 
+        for (guint i = 0; i < seq.size(); i++) 
           if (seq[i] == val) return (true);
         return (false);
       }
@@ -53,27 +56,27 @@ namespace MR {
 
 
 
-    void NameParser::parse (const std::string& imagename, uint max_num_sequences)
+    void NameParser::parse (const String& imagename, guint max_num_sequences)
     {
       specification = imagename;
-      if (Path::is_dir (imagename)) {
+      if (Glib::file_test (imagename, Glib::FILE_TEST_IS_DIR)) {
         array.resize (1);
         array[0].set_str (imagename);
         return;
       }
 
-      folder_name = Path::dirname (specification);
+      folder_name = Glib::path_get_dirname (specification);
 
 
       try {
-        std::string::size_type pos;
-        std::string basename = Path::basename (specification);
-        uint num = 0;
+        String::size_type pos;
+        String basename = Glib::path_get_basename (specification);
+        guint num = 0;
 
-        while ((pos = basename.find_last_of (']')) < std::string::npos && num < max_num_sequences) {
+        while ((pos = basename.find_last_of (']')) < String::npos && num < max_num_sequences) {
           insert_str (basename.substr (pos+1));
           basename = basename.substr (0, pos);
-          if ((pos = basename.find_last_of ('[')) == std::string::npos) 
+          if ((pos = basename.find_last_of ('[')) == String::npos) 
           throw Exception ("malformed image sequence specifier for image \"" + specification + "\"");
 
           insert_seq (basename.substr (pos+1));
@@ -84,11 +87,11 @@ namespace MR {
         insert_str (basename);
 
 
-        for (uint i = 0; i < array.size(); i++) 
+        for (guint i = 0; i < array.size(); i++) 
           if (array[i].is_sequence()) 
             if (array[i].sequence().size()) 
-              for (uint n = 0; n < array[i].sequence().size()-1; n++) 
-                for (uint m = n+1; m < array[i].sequence().size(); m++) 
+              for (guint n = 0; n < array[i].sequence().size()-1; n++) 
+                for (guint m = n+1; m < array[i].sequence().size(); m++) 
                   if (array[i].sequence()[n] == array[i].sequence()[m]) 
                     throw Exception ("malformed image sequence specifier for image \"" + specification + "\" (duplicate indices)");
       }
@@ -120,7 +123,7 @@ namespace MR {
     std::ostream& operator<< (std::ostream& stream, const NameParser& parser)
     {
       stream << "Image::NameParser: " << parser.specification << "\n";
-      for (uint i = 0; i < parser.array.size(); i++) 
+      for (guint i = 0; i < parser.array.size(); i++) 
         stream << "  " << i << ": " << parser.array[i] << "\n";
       return (stream);
     }
@@ -134,13 +137,13 @@ namespace MR {
 
 
 
-    bool NameParser::match (const std::string& file_name, std::vector<int>& indices) const
+    bool NameParser::match (const String& file_name, std::vector<int>& indices) const
     {
       int current = 0;
-      uint num = 0;
+      guint num = 0;
       indices.resize (seq_index.size());
 
-      for (uint i = 0; i < array.size(); i++) {
+      for (guint i = 0; i < array.size(); i++) {
         if (array[i].is_string()) {
           if (file_name.substr(current, array[i].string().size()) != array[i].string()) return (false);
           current += array[i].string().size();
@@ -163,21 +166,21 @@ namespace MR {
     void NameParser::calculate_padding (const std::vector<int>& maxvals)
     {
       assert (maxvals.size() == seq_index.size());
-      for (uint n = 0; n < seq_index.size(); n++) 
+      for (guint n = 0; n < seq_index.size(); n++) 
         assert (maxvals[n] > 0);
 
-      for (uint n = 0; n < seq_index.size(); n++) {
-        uint m = seq_index.size() - 1 - n;
+      for (guint n = 0; n < seq_index.size(); n++) {
+        guint m = seq_index.size() - 1 - n;
         NameParserItem& item (array[seq_index[n]]);
         if (item.sequence().size()) {
           if (maxvals[m]) 
-            if (item.sequence().size() != (uint) maxvals[m]) 
+            if (item.sequence().size() != (guint) maxvals[m]) 
               throw Exception ("dimensions requested in image specifier \"" + specification 
                   + "\" do not match supplied header information");
         }
         else {
           item.sequence().resize (maxvals[m]);
-          for (uint i = 0; i < item.sequence().size(); i++)
+          for (guint i = 0; i < item.sequence().size(); i++)
             item.sequence()[i] = i;
         }
 
@@ -189,15 +192,15 @@ namespace MR {
 
 
 
-    void NameParserItem::calc_padding (uint maxval)
+    void NameParserItem::calc_padding (guint maxval)
     {
-      for (uint i = 0; i < sequence().size(); i++) {
+      for (guint i = 0; i < sequence().size(); i++) {
         assert (sequence()[i] >= 0);
-        if (maxval < (uint) sequence()[i]) maxval = sequence()[i];
+        if (maxval < (guint) sequence()[i]) maxval = sequence()[i];
       }
 
       seq_length = 1;
-      for (uint num = 10; maxval >= num; num *= 10) 
+      for (guint num = 10; maxval >= num; num *= 10) 
         seq_length += 1; 
     }
 
@@ -205,24 +208,26 @@ namespace MR {
 
 
 
-    std::string NameParser::name (const std::vector<int>& indices)
+    String NameParser::name (const std::vector<int>& indices)
     {
       if (!seq_index.size()) 
-        return (Path::join (folder_name, array[0].string()));
+        return (Glib::build_filename (folder_name, array[0].string()));
 
       assert (indices.size() == seq_index.size());
 
-      std::string str;
-      uint n = seq_index.size()-1;
-      for (uint i = 0; i < array.size(); i++) {
+      String str;
+      guint n = seq_index.size()-1;
+      for (guint i = 0; i < array.size(); i++) {
         if (array[i].is_string()) str += array[i].string();
         else { 
-          str += printf ("%*.*d", array[i].size(), array[i].size(), array[i].sequence()[indices[n]]);
+          gchar buf[array[i].size()+1];
+          g_sprintf (buf, "%*.*d", array[i].size(), array[i].size(), array[i].sequence()[indices[n]]);
+          str += buf;
           n--; 
         }
       }
 
-      return (Path::join (folder_name, str));
+      return (Glib::build_filename (folder_name, str));
     }
 
 
@@ -231,29 +236,29 @@ namespace MR {
 
 
 
-    std::string NameParser::get_next_match (std::vector<int>& indices, bool return_seq_index)
+    String NameParser::get_next_match (std::vector<int>& indices, bool return_seq_index)
     {
       if (!folder) {
-        try { folder = new Path::Dir (folder_name); }
+        try { folder = new Glib::Dir (folder_name); }
         catch (...) {
           folder = NULL;
-          throw Exception ("failed to open folder \"" + folder_name + "\": " + strerror(errno));
+          throw Exception ("failed to open folder \"" + folder_name + "\": " + Glib::strerror(errno));
         }
       }
 
-      std::string fname;
+      String fname;
       while ((fname = folder->read_name()).size()) {
         if (match (fname, indices)) {
           if (return_seq_index) {
-            for (uint i = 0; i < ndim(); i++) {
+            for (guint i = 0; i < ndim(); i++) {
               if (sequence(i).size()) {
-                uint n = 0;
+                guint n = 0;
                 while (indices[i] != sequence(i)[n]) n++; 
                 indices[i] = n;
               }
             }
           }
-          return (Path::join (folder_name, fname));
+          return (Glib::build_filename (folder_name, fname));
         }
       }
 
@@ -263,7 +268,7 @@ namespace MR {
 
     bool ParsedName::operator< (const ParsedName& pn) const
     {
-      for (uint i = 0; i < ndim(); i++) 
+      for (guint i = 0; i < ndim(); i++) 
         if (index(i) != pn.index(i)) 
           return (index(i) < pn.index(i));
       return (false);
@@ -272,7 +277,7 @@ namespace MR {
 
 
 
-    std::vector<int> ParsedNameList::parse_scan_check (const std::string& specifier, uint max_num_sequences)
+    std::vector<int> ParsedNameList::parse_scan_check (const String& specifier, guint max_num_sequences)
     {
       NameParser parser;
       parser.parse (specifier);
@@ -281,7 +286,7 @@ namespace MR {
       std::sort (begin(), end());
       std::vector<int> dim = count();
 
-      for (uint n = 0; n < dim.size(); n++) 
+      for (guint n = 0; n < dim.size(); n++) 
         if (parser.sequence(n).size()) 
           if (dim[n] != (int) parser.sequence(n).size()) 
             throw Exception ("number of files found does not match specification \"" + specifier + "\"");
@@ -302,7 +307,7 @@ namespace MR {
         return;
       }
 
-      std::string entry;
+      String entry;
 
       while ((entry = parser.get_next_match (index, true)).size()) 
         push_back (RefPtr<ParsedName> (new ParsedName (entry, index)));
@@ -324,7 +329,7 @@ namespace MR {
       }
 
       std::vector<int> dim ((*this)[0]->ndim(), 0);
-      uint current_entry = 0;
+      guint current_entry = 0;
       
       count_dim (dim, current_entry, 0);
 
@@ -334,14 +339,14 @@ namespace MR {
 
 
 
-    void ParsedNameList::count_dim (std::vector<int>& dim, uint& current_entry, uint current_dim) const
+    void ParsedNameList::count_dim (std::vector<int>& dim, guint& current_entry, guint current_dim) const
     {
       int n;
       bool stop = false;
       RefPtr<const ParsedName> first_entry ((*this)[current_entry]);
 
       for (n = 0; current_entry < size(); n++) {
-        for (uint d = 0; d < current_dim; d++)
+        for (guint d = 0; d < current_dim; d++)
           if ((*this)[current_entry]->index(d) != first_entry->index(d)) stop = true;
         if (stop) break;
 
@@ -370,7 +375,7 @@ namespace MR {
     std::ostream& operator<< (std::ostream& stream, const ParsedName& pin)
     {
       stream << "[ ";
-      for (uint n = 0; n < pin.ndim(); n++) 
+      for (guint n = 0; n < pin.ndim(); n++) 
         stream << pin.index(n) << " ";
       stream << "] " << pin.name();
       return (stream);

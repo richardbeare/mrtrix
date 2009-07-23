@@ -169,7 +169,7 @@ namespace MR {
       }
 
       if (slice.projection == 0) {
-        for (uint n = 0; n < 3; n++) {
+        for (guint n = 0; n < 3; n++) {
           float f = cached.T[4*n];
           cached.T[4*n] = -cached.T[4*n+1];
           cached.T[4*n+1] = -cached.T[4*n+2];
@@ -177,7 +177,7 @@ namespace MR {
         }
       }
       else if (slice.projection == 1) {
-        for (uint n = 0; n < 3; n++) {
+        for (guint n = 0; n < 3; n++) {
           float f = cached.T[4*n+1];
           cached.T[4*n+1] = -cached.T[4*n+2];
           cached.T[4*n+2] = f;
@@ -210,8 +210,8 @@ namespace MR {
         float xbounds[2], ybounds[2];
         slice.image->get_bounds (xbounds, ybounds, vx, vy , slice.focus);
 
-        cached.dim[0] = (uint) ((xbounds[1]-xbounds[0])/ev[0]) + 1;
-        cached.dim[1] = (uint) ((ybounds[1]-ybounds[0])/ev[1]) + 1;
+        cached.dim[0] = (guint) ((xbounds[1]-xbounds[0])/ev[0]) + 1;
+        cached.dim[1] = (guint) ((ybounds[1]-ybounds[0])/ev[1]) + 1;
 
         cached.corners[0] = slice.focus + (xbounds[0]+0.5*ev[0]) * vx + (ybounds[0]+0.5*ev[1]) * vy;
         cached.corners[1] = cached.corners[0] + ev[1]*cached.dim[1] * vy;
@@ -283,7 +283,7 @@ namespace MR {
 
       tex.allocate (MAX (cached.dim[0], cached.dim[1]));
       tex.clear();
-      uint8_t RGB[] = { 0, 0, 0 };
+      guint8 RGB[] = { 0, 0, 0 };
       for (int y = 0; y < cached.dim[1]; y++) {
         for (int x = 0; x < cached.dim[0]; x++) {
           if (!I.P (cached.anchor + x*cached.vx + y*cached.vy)) {
@@ -343,7 +343,7 @@ namespace MR {
       tex.clear();
 
       if (cached.slice >= 0 && cached.slice < (int) pos.dim (slice.projection)) {
-        uint8_t RGB[] = { 0, 0, 0 };
+        guint8 RGB[] = { 0, 0, 0 };
         for (pos.set(iy,0); pos[iy] < cached.dim[1]; pos.inc(iy)) {
           for (pos.set(ix,0); pos[ix] < cached.dim[0]; pos.inc(ix)) {
             if (tex.is_rgba()) {

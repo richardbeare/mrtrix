@@ -28,13 +28,13 @@
 namespace MR {
   namespace Image {
 
-    class Voxel;
+    class Position;
 
     class FFT {
       protected:
         Math::FFT  ft;
       public:
-        void fft (Voxel& dest, Voxel& source, size_t axis, bool inverse = false, bool shift = false);
+        void fft (Position& dest, Position& source, int axis, bool inverse = false, bool shift = false);
     };
 
   }

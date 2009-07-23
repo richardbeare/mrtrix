@@ -132,7 +132,7 @@ namespace MR {
       dynamic_cast<Gtk::CheckMenuItem&> (view_menu.items()[9]).set_active (true);
 
       realize();
-      for (uint n = 0; n < argument.size(); n++) manage (argument[n].get_image());
+      for (guint n = 0; n < argument.size(); n++) manage (argument[n].get_image());
 
       error = Viewer::ErrorDialog::error;
       info = Viewer::ErrorDialog::info;
@@ -192,8 +192,8 @@ namespace MR {
       MR::Image::Position &P (*S.image->interp);
       
       Point pix (I.R2P (S.focus));
-      std::string pos;
-      float value = NAN;
+      String pos;
+      float value = GSL_NAN;
       if (S.orientation) {
         I.P (pix);
         value = I.value();
@@ -204,7 +204,7 @@ namespace MR {
         P.set (0, round (pix[0]));
         P.set (1, round (pix[1]));
         P.set (2, round (pix[2]));
-        value = !P ? NAN : P.value();
+        value = !P ? GSL_NAN : P.value();
         for (int n = 0; n < P.ndim(); n++) pos += str (P[n]) + " ";
       }
 
@@ -224,7 +224,7 @@ namespace MR {
         std::vector<RefPtr<MR::Image::Object> > selection = dialog.get_images();
         if (selection.size()) {
           int first = images.size();
-          for (uint n = 0; n < selection.size(); n++) 
+          for (guint n = 0; n < selection.size(); n++) 
             manage (selection[n]);
           dynamic_cast<Gtk::RadioMenuItem&> (image_menu.items()[3+first]).set_active (true);
           on_image_selected (images[first]);
@@ -244,7 +244,7 @@ namespace MR {
       Dialog::File dialog ("Save Image", false, false);
 
       if (dialog.run() == Gtk::RESPONSE_OK) {
-        std::vector<std::string> selection = dialog.get_selection();
+        std::vector<String> selection = dialog.get_selection();
         if (selection.size()) {
           try {
             MR::Image::Object obj;
@@ -272,7 +272,7 @@ namespace MR {
     
     void Window::on_file_close ()
     {
-      uint n;
+      guint n;
       for (n = 0; n < images.size(); n++) {
         if (images[n] == image) {
 
@@ -420,7 +420,7 @@ namespace MR {
         S.orientation.from_matrix (matrix);
       }
       S.focus.invalidate();
-      pane().FOV = NAN;
+      pane().FOV = GSL_NAN;
       const MR::Image::Object& ima (*S.image->image);
       S.projection = minindex (ima.dim(0)*ima.vox(0), ima.dim(1)*ima.vox(1), ima.dim(2)*ima.vox(2));
       update_projection();
@@ -464,7 +464,7 @@ namespace MR {
     { 
       if (images.size() < 2) return;
 
-      uint n;
+      guint n;
       for (n = 0; n < images.size(); n++) 
         if (images[n] == image) break;
 
@@ -479,7 +479,7 @@ namespace MR {
     { 
       if (images.size() < 2) return;
 
-      uint n;
+      guint n;
       for (n = 0; n < images.size(); n++) 
         if (images[n] == image) break;
 
@@ -507,7 +507,7 @@ namespace MR {
 
       dialog.set_name ("MRView");
       dialog.set_icon (Icon);
-      std::vector<std::string> slist;
+      std::vector<String> slist;
       slist.push_back (App::author);
       dialog.set_authors (slist);
       dialog.set_comments ("The MRtrix image viewer");

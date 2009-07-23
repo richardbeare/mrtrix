@@ -29,79 +29,79 @@ namespace MR {
 
   class DataType {
     protected:
-      uint8_t dt;
+      guchar dt;
 
     public:
       DataType ();
-      DataType (uint8_t type);
+      DataType (guchar type);
       DataType (const DataType& DT);
 
-      uint8_t&                operator() ();
-      const uint8_t&          operator() () const;
-      bool                   operator== (uint8_t type) const;
-      bool                   operator!= (uint8_t type) const;
+      guchar&                operator() ();
+      const guchar&          operator() () const;
+      bool                   operator== (guchar type) const;
+      bool                   operator!= (guchar type) const;
       bool                   operator== (const DataType DT) const;
       bool                   operator!= (const DataType DT) const;
       const DataType&        operator= (const DataType DT);
 
-      bool                   is (uint8_t type) const;
+      bool                   is (guchar type) const;
       bool                   is_complex () const;
       bool                   is_signed () const;
       bool                   is_little_endian () const;
       bool                   is_big_endian () const;
       void                   set_byte_order_native ();
 
-      void                   parse (const std::string& spec);
-      uint                  bits () const;
-      uint                  bytes () const;
-      const char*           description () const;
-      const char*           specifier () const;
+      void                   parse (const String& spec);
+      guint                  bits () const;
+      guint                  bytes () const;
+      const gchar*           description () const;
+      const gchar*           specifier () const;
 
-      void                   set_flag (uint8_t flag);
-      void                   unset_flag (uint8_t flag);
+      void                   set_flag (guchar flag);
+      void                   unset_flag (guchar flag);
 
 
 
-      static const uint8_t     ComplexNumber = 0x10U;
-      static const uint8_t     Signed        = 0x20U;
-      static const uint8_t     LittleEndian  = 0x40U;
-      static const uint8_t     BigEndian     = 0x80U;
-      static const uint8_t     Text          = 0xFFU;
-      static const uint8_t     GroupStart    = 0xFEU;
-      static const uint8_t     GroupEnd      = 0xFDU;
+      static const guchar     ComplexNumber = 0x10U;
+      static const guchar     Signed        = 0x20U;
+      static const guchar     LittleEndian  = 0x40U;
+      static const guchar     BigEndian     = 0x80U;
+      static const guchar     Text          = 0xFFU;
+      static const guchar     GroupStart    = 0xFEU;
+      static const guchar     GroupEnd      = 0xFDU;
 
-      static const uint8_t     Undefined     = 0x00U;
-      static const uint8_t     Bit           = 0x01U;
-      static const uint8_t     UInt8         = 0x02U;
-      static const uint8_t     UInt16        = 0x03U;
-      static const uint8_t     UInt32        = 0x04U;
-      static const uint8_t     Float32       = 0x05U;
-      static const uint8_t     Float64       = 0x06U;
+      static const guchar     Undefined     = 0x00U;
+      static const guchar     Bit           = 0x01U;
+      static const guchar     UInt8         = 0x02U;
+      static const guchar     UInt16        = 0x03U;
+      static const guchar     UInt32        = 0x04U;
+      static const guchar     Float32       = 0x05U;
+      static const guchar     Float64       = 0x06U;
 
-      static const uint8_t     Int8          = UInt8  | Signed;
-      static const uint8_t     Int16         = UInt16 | Signed;
-      static const uint8_t     Int16LE       = UInt16 | Signed | LittleEndian;
-      static const uint8_t     UInt16LE      = UInt16 | LittleEndian;
-      static const uint8_t     Int16BE       = UInt16 | Signed | BigEndian;
-      static const uint8_t     UInt16BE      = UInt16 | BigEndian;
-      static const uint8_t     Int32         = UInt32 | Signed;
-      static const uint8_t     Int32LE       = UInt32 | Signed | LittleEndian;
-      static const uint8_t     UInt32LE      = UInt32 | LittleEndian;
-      static const uint8_t     Int32BE       = UInt32 | Signed | BigEndian;
-      static const uint8_t     UInt32BE      = UInt32 | BigEndian;
-      static const uint8_t     Float32LE     = Float32 | LittleEndian;
-      static const uint8_t     Float32BE     = Float32 | BigEndian;
-      static const uint8_t     Float64LE     = Float64 | LittleEndian;
-      static const uint8_t     Float64BE     = Float64 | BigEndian;
-      static const uint8_t     CFloat32      = ComplexNumber | Float32;
-      static const uint8_t     CFloat32LE    = ComplexNumber | Float32 | LittleEndian;
-      static const uint8_t     CFloat32BE    = ComplexNumber | Float32 | BigEndian;
-      static const uint8_t     CFloat64      = ComplexNumber | Float64;
-      static const uint8_t     CFloat64LE    = ComplexNumber | Float64 | LittleEndian;
-      static const uint8_t     CFloat64BE    = ComplexNumber | Float64 | BigEndian;
+      static const guchar     Int8          = UInt8  | Signed;
+      static const guchar     Int16         = UInt16 | Signed;
+      static const guchar     Int16LE       = UInt16 | Signed | LittleEndian;
+      static const guchar     UInt16LE      = UInt16 | LittleEndian;
+      static const guchar     Int16BE       = UInt16 | Signed | BigEndian;
+      static const guchar     UInt16BE      = UInt16 | BigEndian;
+      static const guchar     Int32         = UInt32 | Signed;
+      static const guchar     Int32LE       = UInt32 | Signed | LittleEndian;
+      static const guchar     UInt32LE      = UInt32 | LittleEndian;
+      static const guchar     Int32BE       = UInt32 | Signed | BigEndian;
+      static const guchar     UInt32BE      = UInt32 | BigEndian;
+      static const guchar     Float32LE     = Float32 | LittleEndian;
+      static const guchar     Float32BE     = Float32 | BigEndian;
+      static const guchar     Float64LE     = Float64 | LittleEndian;
+      static const guchar     Float64BE     = Float64 | BigEndian;
+      static const guchar     CFloat32      = ComplexNumber | Float32;
+      static const guchar     CFloat32LE    = ComplexNumber | Float32 | LittleEndian;
+      static const guchar     CFloat32BE    = ComplexNumber | Float32 | BigEndian;
+      static const guchar     CFloat64      = ComplexNumber | Float64;
+      static const guchar     CFloat64LE    = ComplexNumber | Float64 | LittleEndian;
+      static const guchar     CFloat64BE    = ComplexNumber | Float64 | BigEndian;
 
-      static const uint8_t     Native        = Float32 | 
-#ifdef BYTE_ORDER_BIG_ENDIAN
+      static const guchar     Native        = Float32 | 
+#if G_BYTE_ORDER == G_BIG_ENDIAN
         BigEndian;
 #else
         LittleEndian;
@@ -123,28 +123,28 @@ namespace MR {
 #endif
   { }
 
-  inline DataType::DataType (uint8_t type) : dt (type)               { }
+  inline DataType::DataType (guchar type) : dt (type)               { }
   inline DataType::DataType (const DataType& DT) : dt (DT.dt)       { }
-  inline uint8_t& DataType::operator() ()                            { return (dt); }
-  inline const uint8_t& DataType::operator() () const                { return (dt); }
-  inline bool DataType::operator== (uint8_t type) const              { return (dt == type); }
-  inline bool DataType::operator!= (uint8_t type) const              { return (dt != type); }
+  inline guchar& DataType::operator() ()                            { return (dt); }
+  inline const guchar& DataType::operator() () const                { return (dt); }
+  inline bool DataType::operator== (guchar type) const              { return (dt == type); }
+  inline bool DataType::operator!= (guchar type) const              { return (dt != type); }
   inline bool DataType::operator== (const DataType DT) const        { return (dt == DT.dt); }
   inline bool DataType::operator!= (const DataType DT) const        { return (dt != DT.dt); }
   inline const DataType& DataType::operator= (const DataType DT)    { dt = DT.dt; return (*this); }
-  inline uint DataType::bytes () const                             { return ((bits()+7)/8); }
-  inline bool DataType::is (uint8_t type) const                      { return (dt == type); }
+  inline guint DataType::bytes () const                             { return ((bits()+7)/8); }
+  inline bool DataType::is (guchar type) const                      { return (dt == type); }
   inline bool DataType::is_complex () const                         { return (dt & ComplexNumber); }
   inline bool DataType::is_signed () const                          { return (dt & Signed); }
   inline bool DataType::is_little_endian () const                   { return (dt & LittleEndian); }
   inline bool DataType::is_big_endian() const                       { return (dt & BigEndian); }
-  inline void DataType::set_flag (uint8_t flag)                      { dt |= flag; }
-  inline void DataType::unset_flag (uint8_t flag)                    { dt &= ~flag; }
+  inline void DataType::set_flag (guchar flag)                      { dt |= flag; }
+  inline void DataType::unset_flag (guchar flag)                    { dt &= ~flag; }
   inline void DataType::set_byte_order_native ()
   {
     if ( dt != Bit && dt != Int8 && dt != UInt8 ) {
       if ( !is_little_endian() && !is_big_endian() ) {
-#ifdef BYTE_ORDER_BIG_ENDIAN
+#if G_BYTE_ORDER == G_BIG_ENDIAN
         dt |= BigEndian;
 #else
         dt |= LittleEndian;

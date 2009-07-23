@@ -30,7 +30,6 @@
 #include <gsl/gsl_sf_legendre.h>
 
 #include "dwi/renderer.h"
-#include "math/math.h"
 
 #define X .525731112119133606 
 #define Z .850650808352039932
@@ -122,15 +121,15 @@ namespace MR {
         indices[n][2] = initial_indices[n][2];
       }
 
-      std::map<Edge,uint> edges;
+      std::map<Edge,guint> edges;
 
       for (lod_computed = 0; lod_computed < lod; lod_computed++) {
-        uint num = indices.size();
+        guint num = indices.size();
         for (GLuint n = 0; n < num; n++) {
-          uint index1, index2, index3;
+          guint index1, index2, index3;
 
           Edge E (indices[n][0], indices[n][1]);
-          std::map<Edge,uint>::const_iterator iter;
+          std::map<Edge,guint>::const_iterator iter;
           if ((iter = edges.find (E)) == edges.end()) {
             index1 = rows.size();
             edges[E] = index1;
@@ -177,9 +176,9 @@ namespace MR {
       int actual_lmax = SH::LforN (values.size());
       if (lmax > lmax_computed) lmax = lmax_computed;
       if (actual_lmax > lmax) actual_lmax = lmax;
-      uint nsh = SH::NforL (actual_lmax);
+      guint nsh = SH::NforL (actual_lmax);
 
-      for (uint n = 0; n < vertices.size(); n++) {
+      for (guint n = 0; n < vertices.size(); n++) {
         Vertex& V (vertices[n]);
         GLfloat* row (rows[n]);
         GLfloat* row_r (get_r (row));
@@ -188,7 +187,7 @@ namespace MR {
 
         float r (0.0), daz (0.0), del (0.0);
 
-        for (uint i = 0; i < nsh; i++) {
+        for (guint i = 0; i < nsh; i++) {
           r += row_r[i] * values[i]; 
           daz += row_daz[i] * values[i]; 
           del += row_del[i] * values[i]; 
@@ -211,7 +210,7 @@ namespace MR {
         float caz = cos (az);
         float saz = sin (az);
         float cel = row[2];
-        float sel = sqrt (1.0 - Math::pow2 (cel));
+        float sel = sqrt (1.0 - gsl_pow_2 (cel));
 
         if (hide_neg_lobes && r < 0.0) {
           V.P[0] = V.P[1] = V.P[2] = 0.0;

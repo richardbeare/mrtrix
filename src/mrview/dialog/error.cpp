@@ -34,7 +34,7 @@ namespace MR {
     sigc::connection  ErrorDialog::idle_connection;
 
 
-    ErrorDialog::ErrorDialog (const std::string& main_message) : 
+    ErrorDialog::ErrorDialog (const String& main_message) : 
       Gtk::Dialog ("Error", true, false),
       more ("details"),
       icon (Gtk::Stock::DIALOG_ERROR, Gtk::ICON_SIZE_DIALOG)
@@ -88,7 +88,7 @@ namespace MR {
       return (false);
     }
 
-    void ErrorDialog::error (const std::string& msg) 
+    void ErrorDialog::error (const String& msg) 
     {
       cmdline_error (msg);
       messages.push_back (ErrorMsg (1, msg));
@@ -97,7 +97,7 @@ namespace MR {
     } 
 
 
-    void ErrorDialog::info  (const std::string& msg) 
+    void ErrorDialog::info  (const String& msg) 
     {
       cmdline_info (msg);
       messages.push_back (ErrorMsg (2, msg)); 

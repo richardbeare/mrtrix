@@ -221,7 +221,7 @@ namespace MR {
         Dialog::File dialog ("Set screenshot prefix", false, false);
         dialog.set_selection (destination_prefix_label.get_text());
         if (dialog.run() == Gtk::RESPONSE_OK) {
-          std::vector<std::string> selection = dialog.get_selection();
+          std::vector<String> selection = dialog.get_selection();
           if (selection.size()) {
             prefix = selection[0] + "-";
             destination_prefix_label.set_text (Glib::path_get_basename (selection[0]));

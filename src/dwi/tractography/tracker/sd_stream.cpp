@@ -21,6 +21,7 @@
 */
 
 #include "dwi/tractography/tracker/sd_stream.h"
+#include "dwi/SH.h"
 
 namespace MR {
   namespace DWI {
@@ -30,9 +31,8 @@ namespace MR {
 
         SDStream::SDStream (Image::Object& source_image, Properties& properties) : 
           Base (source_image, properties),
-          lmax (Math::SH::LforN (source.dim(3))),
-          precomputed (true),
-          precomputer (NULL)
+          lmax (SH::LforN (source.dim(3))),
+          precomputed (true)
         {
           float min_curv = step_size / ( 2.0 * sin (0.5 * acos (M_PI_2)));
 
@@ -44,7 +44,7 @@ namespace MR {
           if (props["sh_precomputed"].empty()) props["sh_precomputed"] = ( precomputed ? "1" : "0" ); else precomputed = to<int> (props["sh_precomputed"]);
 
           min_dp = cos (curv2angle (step_size, min_curv));
-          if (precomputed) precomputer = new Math::SH::PrecomputedAL<float> (lmax, 256);
+          if (precomputed) SH::precompute (lmax);
         }
 
 
@@ -59,8 +59,8 @@ namespace MR {
           if (!seed_dir) dir.set (rng.normal(), rng.normal(), rng.normal());
           else dir = seed_dir;
           dir.normalise();
-          float val = Math::SH::get_peak (values, lmax, dir, precomputer);
-          if (finite (val)) if (val > init_threshold) return (false);
+          float val = SH::get_peak (values, lmax, dir, precomputed);
+          if (gsl_finite (val)) if (val > init_threshold) return (false);
           return (true);
         }
 
@@ -74,9 +74,9 @@ namespace MR {
 
           Point prev_dir (dir);
           dir.normalise ();
-          float val = Math::SH::get_peak (values, lmax, dir, precomputer);
+          float val = SH::get_peak (values, lmax, dir, precomputed);
 
-          if (!finite (val)) return (true);
+          if (!gsl_finite (val)) return (true);
           if (val < threshold) return (true);
           if (dir.dot (prev_dir) < min_dp) return (true);
 

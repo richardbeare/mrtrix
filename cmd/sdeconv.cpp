@@ -18,14 +18,18 @@
     You should have received a copy of the GNU General Public License
     along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
 
+
+    31-10-2008 J-Donald Tournier <d.tournier@brain.org.au>
+    * use MR::Ptr instead of std::auto_ptr
+   
 */
 
 #include "app.h"
-#include "progressbar.h"
 #include "ptr.h"
-#include "image/voxel.h"
+#include "image/position.h"
+#include "math/linalg.h"
 #include "dwi/gradient.h"
-#include "math/SH.h"
+#include "dwi/SH.h"
 
 using namespace std; 
 using namespace MR; 
@@ -60,7 +64,7 @@ ARGUMENTS = {
 
 
 OPTIONS = { 
-  Option ("grad", "supply gradient encoding", "specify the diffusion-weighted gradient scheme used in the acquisition. The program will normally attempt to use the encoding stored in image header.")
+  Option ("grad", "supply gradient encoding", "specify the diffusion-weighted gradient scheme used in the acquisition. The program will normally attempt to use the encoding stored in image header.", false, true)
     .append (Argument ("encoding", "gradient encoding", "the gradient encoding, supplied as a 4xN text file with each line is in the format [ X Y Z b ], where [ X Y Z ] describe the direction of the applied gradient, and b gives the b-value in units (1000 s/mm^2).").type_file ()),
 
   Option ("lmax", "maximum harmonic order", "set the maximum harmonic order for the output series. By default, the program will use the highest possible lmax given the number of diffusion-weighted images.")
@@ -82,17 +86,17 @@ EXECUTE {
   Image::Object &dwi_obj (*argument[0].get_image());
   Image::Header header (dwi_obj);
 
-  if (header.axes.size() != 4) 
+  if (header.ndim() != 4) 
     throw Exception ("dwi image should contain 4 dimensions");
 
-  Math::Matrix<float> grad;
+  Math::Matrix grad;
 
   std::vector<OptBase> opt = get_options (0);
   if (opt.size()) grad.load (opt[0][0].get_string());
   else {
-    if (!header.DW_scheme.is_set()) 
+    if (!header.DW_scheme.is_valid()) 
       throw Exception ("no diffusion encoding found in image \"" + header.name + "\"");
-    grad = header.DW_scheme;
+    grad.copy (header.DW_scheme);
   }
 
   if (grad.rows() < 7 || grad.columns() != 4) 
@@ -100,7 +104,7 @@ EXECUTE {
 
   info ("found " + str(grad.rows()) + "x" + str(grad.columns()) + " diffusion-weighted encoding");
 
-  if (header.axes[3].dim != int (grad.rows())) 
+  if (header.dim(3) != (int) grad.rows()) 
     throw Exception ("number of studies in base image does not match that in encoding file");
 
   DWI::normalise_grad (grad);
@@ -109,8 +113,8 @@ EXECUTE {
   DWI::guess_DW_directions (dwis, bzeros, grad);
 
   {
-    std::string msg ("found b-zeros in studies [ ");
-    for (size_t n = 0; n < bzeros.size(); n++) msg += str(bzeros[n]) + " ";
+    String msg ("found b-zeros in studies [ ");
+    for (guint n = 0; n < bzeros.size(); n++) msg += str(bzeros[n]) + " ";
     msg += "]";
     info (msg);
   }
@@ -118,30 +122,30 @@ EXECUTE {
   info ("found " + str(dwis.size()) + " diffusion-weighted directions");
 
   opt = get_options (1);
-  size_t lmax = opt.size() ? opt[0][0].get_int() : Math::SH::LforN (dwis.size());
-  if (lmax > Math::SH::LforN (dwis.size())) {
+  int lmax = opt.size() ? opt[0][0].get_int() : DWI::SH::LforN (dwis.size());
+  if (lmax > DWI::SH::LforN (dwis.size())) {
     info ("warning: not enough data to estimate spherical harmonic components up to order " + str(lmax));
-    lmax = Math::SH::LforN (dwis.size());
+    lmax = DWI::SH::LforN (dwis.size());
   }
   info ("calculating even spherical harmonic components up to order " + str(lmax));
 
 
-  info (std::string ("setting response function from file \"") + argument[1].get_string() + "\"");
-  Math::Vector<float> response;
+  info (String ("setting response function from file \"") + argument[1].get_string() + "\"");
+  Math::Vector response;
   response.load (argument[1].get_string());
   info ("setting response function using even SH coefficients: " + str(response));
 
 
   opt = get_options (3);
-  Math::Vector<float> filter;
+  Math::Vector filter;
   if (opt.size()) {
     filter.load (opt[0][0].get_string());
-    if (filter.size() < (uint) ((lmax/2)+1)) 
+    if (filter.size() < (guint) ((lmax/2)+1)) 
       throw Exception ("not enough filter coefficients supplied for lmax = " + str(lmax));
   }
   else {
     filter.allocate (lmax/2+1);
-    filter.view() = 1.0;
+    filter.set_all (1.0);
   }
   info ("using filtering coefficients: " + str(filter));
 
@@ -149,69 +153,69 @@ EXECUTE {
 
 
   {
-    Math::Vector<float> tmp;
-    Math::SH::SH2RH (tmp, response);
-    for (size_t i = 0; i <= lmax/2; i++)
+    Math::Vector tmp;
+    DWI::SH::SH2RH (tmp, response);
+    for (int i = 0; i <= lmax/2; i++)
       if (response[i]) response[i] = filter[i]/tmp[i];
   }
   info ("setting inverse response function using even RH coefficients: " + str(response));
 
 
 
-  Math::Matrix<float> dirs;
+  Math::Matrix dirs;
   DWI::gen_direction_matrix (dirs, grad, dwis);
-  Math::SH::Transform<float> SHT (dirs, lmax);
+  DWI::SH::Transform SHT (dirs, lmax);
   SHT.set_filter (response);
 
 
-  header.axes[3].dim = SHT.n_SH();
+  header.axes.dim[3] = SHT.n_SH();
   header.data_type = DataType::Float32;
-  header.axes[0].order = 1; header.axes[0].forward = true;
-  header.axes[1].order = 2; header.axes[1].forward = true;
-  header.axes[2].order = 3; header.axes[2].forward = true;
-  header.axes[3].order = 0; header.axes[3].forward = true;
+  header.axes.axis[0] = 1; header.axes.forward[0] = true;
+  header.axes.axis[1] = 2; header.axes.forward[1] = true;
+  header.axes.axis[2] = 3; header.axes.forward[2] = true;
+  header.axes.axis[3] = 0; header.axes.forward[3] = true;
 
-  Image::Voxel dwi (dwi_obj);
-  Image::Voxel sh (*argument[2].get_image (header));
+  Image::Position dwi (dwi_obj);
+  Image::Position sh (*argument[2].get_image (header));
 
   opt = get_options (2);
-  Ptr<Image::Voxel> mask;
+  Ptr<Image::Position> mask;
   if (opt.size()) 
-    mask = new Image::Voxel (*opt[0][0].get_image());
+    mask = new Image::Position (*opt[0][0].get_image());
 
-  Math::Vector<float> res (lmax);
-  Math::Vector<float> sigs (dwis.size());
+  DWI::SH::Coefs res (lmax);
+  Math::Vector sigs (dwis.size());
 
 
   bool normalise = get_options(4).size();
 
   ProgressBar::init (dwi.dim(0)*dwi.dim(1)*dwi.dim(2), "performing spherical deconvolution...");
 
-  for (dwi[2] = sh[2] = 0; dwi[2] < dwi.dim(2); dwi[2]++, sh[2]++) {
-    if (mask) (*mask)[2] = dwi[2];
+  for (dwi.set(2,0), sh.set(2,0); dwi[2] < dwi.dim(2); dwi.inc(2), sh.inc(2)) {
+    if (mask.get()) mask->set(2, dwi[2]);
 
-    for (dwi[1] = sh[1] = 0; dwi[1] < dwi.dim(1); dwi[1]++, sh[1]++) {
-      if (mask) (*mask)[1] = dwi[1];
+    for (dwi.set(1,0), sh.set(1,0); dwi[1] < dwi.dim(1); dwi.inc(1), sh.inc(1)) {
+      if (mask.get()) mask->set(1, dwi[1]);
 
-      for (dwi[0] = sh[0] = 0; dwi[0] < dwi.dim(0); dwi[0]++, sh[0]++) {
+      for (dwi.set(0,0), sh.set(0,0); dwi[0] < dwi.dim(0); dwi.inc(0), sh.inc(0)) {
         bool proceed = true;
-        if (mask) {
-          (*mask)[0] = dwi[0];
+        if (mask.get()) {
+          mask->set(0, dwi[0]);
           if (mask->value() < 0.5) proceed = false;
         }
 
         if (proceed) {
           double norm = 0.0;
           if (normalise) {
-            for (uint n = 0; n < bzeros.size(); n++) {
-              dwi[3] = bzeros[n];
+            for (guint n = 0; n < bzeros.size(); n++) {
+              dwi.set (3, bzeros[n]);
               norm += dwi.value ();
             }
             norm /= bzeros.size();
           }
 
-          for (uint n = 0; n < dwis.size(); n++) {
-            dwi[3] = dwis[n];
+          for (guint n = 0; n < dwis.size(); n++) {
+            dwi.set (3, dwis[n]);
             sigs[n] = dwi.value(); 
             if (sigs[n] < 0.0) sigs[n] = 0.0;
             if (normalise) sigs[n] /= norm;
@@ -219,8 +223,8 @@ EXECUTE {
 
           SHT.A2SH (res, sigs);
 
-          for (sh[3] = 0; sh[3] < sh.dim(3); sh[3]++)
-            sh.value() = res[sh[3]];
+          for (sh.set(3,0); sh[3] < sh.dim(3); sh.inc(3))
+            sh.value (res.V[sh[3]]);
         }
 
         ProgressBar::inc();

@@ -89,7 +89,7 @@ namespace MR {
         case Choice:
           {
             Gtk::ComboBoxText* choice = manage (new Gtk::ComboBoxText);
-            for (const char** p = arg.extra_info.choice; *p; p++) choice->append_text (*p);
+            for (const gchar** p = arg.extra_info.choice; *p; p++) choice->append_text (*p);
             choice->set_active (0);
             pack_start (*choice);
             widget = (void*) choice;
@@ -114,7 +114,7 @@ namespace MR {
 
       switch (arg.type) {
         case Integer: 
-          data->data.i = (int) ((Gtk::SpinButton*) widget)->get_value();
+          data->data.i = (gint) ((Gtk::SpinButton*) widget)->get_value();
           break;
         case Float:
           data->data.f = ((Gtk::SpinButton*) widget)->get_value();

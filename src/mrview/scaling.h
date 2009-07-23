@@ -33,28 +33,28 @@ namespace MR {
 
     class Scaling {
       public:
-        Scaling () : multiplier (NAN), offset (NAN), min (NAN), max (NAN) { }
-        Scaling (const Scaling& S) : multiplier (S.multiplier), offset (S.offset), min (NAN), max (NAN) { }
+        Scaling () : multiplier (GSL_NAN), offset (GSL_NAN), min (GSL_NAN), max (GSL_NAN) { }
+        Scaling (const Scaling& S) : multiplier (S.multiplier), offset (S.offset), min (GSL_NAN), max (GSL_NAN) { }
 
         float         multiplier, offset;
 
         void          operator= (const Scaling& S) { multiplier = S.multiplier; offset = S.offset; }
 
-        operator bool () const           { return (!isnan (multiplier) && !isnan (offset)); }
-        bool          operator! () const { return (isnan (multiplier) || isnan (offset)); }
+        operator bool () const           { return (!gsl_isnan (multiplier) && !gsl_isnan (offset)); }
+        bool          operator! () const { return (gsl_isnan (multiplier) || gsl_isnan (offset)); }
 
         float         operator () (float val) const   { return (offset + multiplier * val); }
 
         void          adjust (float brightness, float contrast);
-        void          reset () { multiplier = offset = NAN; }
+        void          reset () { multiplier = offset = GSL_NAN; }
 
-        void          rescale_start () const         { min = INFINITY; max = -INFINITY; }
+        void          rescale_start () const         { min = GSL_POSINF; max = GSL_NEGINF; }
         void          rescale_add (float val) const  { if (min > val) min = val; if (max < val) max = val; }
         void          rescale_add (float val[3]) const { rescale_add (val[0]); rescale_add (val[1]); rescale_add (val[2]); }
         void          rescale_end ()
         { 
           if (max > min) { multiplier = 255.0/(max-min); offset = -multiplier*min; }
-          else { multiplier = offset = NAN; }
+          else { multiplier = offset = GSL_NAN; }
         }
 
         bool          operator== (const Scaling& s) const         { return (multiplier == s.multiplier && offset == s.offset); }

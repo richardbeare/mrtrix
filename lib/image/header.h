@@ -1,94 +1,137 @@
 /*
-   Copyright 2008 Brain Research Institute, Melbourne, Australia
+    Copyright 2008 Brain Research Institute, Melbourne, Australia
 
-   Written by J-Donald Tournier, 27/06/08.
+    Written by J-Donald Tournier, 27/06/08.
 
-   This file is part of MRtrix.
+    This file is part of MRtrix.
 
-   MRtrix is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
+    MRtrix is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-   MRtrix is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    MRtrix is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
 
- */
+*/
 
 #ifndef __image_header_h__
 #define __image_header_h__
 
-#include <map>
-
-#include "ptr.h"
 #include "data_type.h"
+#include "image/header.h"
 #include "image/axis.h"
-#include "file/mmap.h"
 #include "math/matrix.h"
 
 namespace MR {
   namespace Image {
 
-    class Header : public std::map<std::string, std::string> {
+    class Object;
+
+    class Header {
       public:
-        Header () : format (NULL), offset (0.0), scale (1.0), read_only (true), num_voxel_per_file (0), first_voxel_offset (0) { }
-        Header (const Header& H) :
-          std::map<std::string, std::string> (H),
-          format (NULL), axes (H.axes), data_type (H.data_type), offset (0.0), scale (1.0), 
-          read_only (true), DW_scheme (H.DW_scheme), comments (H.comments),
-          num_voxel_per_file (0), first_voxel_offset (0), transform_matrix (H.transform_matrix) { } 
+        Header ();
+        Header (const Object& H);
 
-        template <class DataSet> Header (const DataSet& ds) :
-          format (NULL), offset (0.0), scale (1.0), read_only (true),
-          num_voxel_per_file (0), first_voxel_offset (0), transform_matrix (ds.transform()) { 
-            axes.resize (ds.ndim());
-            for (size_t i = 0; i < ds.ndim(); i++) {
-              axes.dim(i) = ds.dim(i);
-              axes.vox(i) = ds.vox(i);
-            }
-          } 
+        void                  reset ();
 
-        std::string                name;
-        const char*                format;
-        Axes                       axes;
-        DataType                   data_type;
-        float                      offset, scale;
-        bool                       read_only;
-        Math::Matrix<float>        DW_scheme;
+        Axes                  axes;
 
-        std::vector<std::string>   comments;
-        std::vector<RefPtr<File::MMap> > files;
+        std::vector<String>   comments;
+        DataType              data_type;
+        Math::Matrix          DW_scheme;
+        float                 offset, scale;
+        String                name;
+        
+        bool                  read_only;
+        const gchar*          format;
 
-        size_t num_voxel_per_file;
-        size_t first_voxel_offset;
+        int                   ndim () const     { return (axes.ndim()); }
+        int                   dim (int axis) const     { return (axes.dim[axis]); }
+        float                 vox (int axis) const     { return (axes.vox[axis]); }
 
-        // DataSet interface:
-        int     dim (size_t index) const { return (axes.dim (index)); } 
-        size_t  ndim () const            { return (axes.ndim()); }
-        float   vox (size_t index) const { return (axes.vox (index)); }
-        const Math::Matrix<float>& transform () const { return (transform_matrix); }
+        const Math::Matrix&   transform () const { return (trans_I2R); }
+        void                  set_transform (const Math::Matrix& M);
+        const Math::Matrix&   I2R () const       { return (trans_I2R); }
+        const Math::Matrix&   R2I () const       { return (trans_R2I); }
+        const Math::Matrix&   P2R () const       { return (trans_P2R); }
+        const Math::Matrix&   R2P () const       { return (trans_R2P); }
 
-        void set_transform (const Math::Matrix<float>& M) { assert (M.rows() == 4 && M.columns() == 4); transform_matrix = M; }
-        void clear () {
-          std::map<std::string, std::string>::clear(); 
-          name.clear(); axes.clear(); comments.clear(); data_type = DataType();
-          offset = 0.0; scale = 1.0; read_only = true; format = NULL;
-          transform_matrix.clear(); DW_scheme.clear();
-        }
+        gsize                memory_footprint (guint up_to_dim = MRTRIX_MAX_NDIMS) const;
+        gsize                memory_footprint (const gchar* axes_spec) const;
 
-        std::string  description () const;
-        void         sanitise ();
+        gsize                voxel_count (int up_to_dim = MRTRIX_MAX_NDIMS) const;
+        gsize                voxel_count (const gchar* axes_spec) const;
 
-        friend std::ostream& operator<< (std::ostream& stream, const Header& H);
+        String               description () const;
+        void                 sanitise_transform ();
+
+        void                 merge (const Header& H);
 
       protected:
-        Math::Matrix<float>  transform_matrix;
+        Math::Matrix         trans_I2R, trans_R2I, trans_P2R, trans_R2P;
     };
+
+    std::ostream& operator<< (std::ostream& stream, const Header& H);
+
+
+
+
+
+
+
+
+
+
+
+
+
+    inline Header::Header() :
+      offset (0.0),
+      scale (1.0),
+      read_only (true),
+      format (NULL)
+    {
+    }
+
+
+    inline gsize Header::voxel_count (int up_to_dim) const
+    { 
+      if (up_to_dim > axes.ndim()) up_to_dim = axes.ndim();
+      gsize fp = 1;
+      for (int n = 0; n < up_to_dim; n++) fp *= axes.dim[n];
+      return (fp); 
+    }
+
+
+    inline gsize Header::voxel_count (const gchar* axes_spec) const
+    { 
+      gsize fp = 1;
+      for (int n = 0; n < axes.ndim() && axes_spec[n]; n++) 
+        if (axes_spec[n] != '0') fp *= axes.dim[n];
+      return (fp); 
+    }
+
+
+    inline gsize Header::memory_footprint (guint up_to_dim) const
+    { 
+      if (data_type.bits() < 8) return ((voxel_count (up_to_dim)+7)/8);
+      else return (data_type.bytes() * voxel_count (up_to_dim));
+    }
+
+
+    inline gsize Header::memory_footprint (const gchar* axes_spec) const
+    { 
+      if (data_type.bits() < 8) return ((voxel_count (axes_spec)+7)/8);
+      else return (data_type.bytes() * voxel_count (axes_spec));
+    }
+
+
 
   }
 }

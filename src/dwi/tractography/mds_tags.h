@@ -31,16 +31,16 @@ namespace MR {
 
       class Tag {
         protected:
-          uint32_t  id;
+          guint32  id;
         public:
           Tag ()                      { id = 0; }
-          Tag (uint32_t n)             { id = n; }
+          Tag (guint32 n)             { id = n; }
           Tag (const Tag& t)          { id = t.id; }
-          Tag (uint32_t l1, uint32_t l2, uint32_t l3, DataType dt) { id = (l1 << 24) | (l2 << 16) | (l3 << 8) | dt(); }
+          Tag (guint32 l1, guint32 l2, guint32 l3, DataType dt) { id = (l1 << 24) | (l2 << 16) | (l3 << 8) | dt(); }
 
           const Tag&   operator= (const Tag& t)      { id = t.id; return (*this); }
-          uint32_t      operator() () const           { return (id); }
-          uint32_t      operator[] (int n) const     { return ((id >> 8*(3-n)) & 0x000000FFU); }
+          guint32      operator() () const           { return (id); }
+          guint32      operator[] (gint n) const     { return ((id >> 8*(3-n)) & 0x000000FFU); }
           bool         operator== (const Tag& t) const  { return (id == t.id); }
           bool         operator!= (const Tag& t) const  { return (id != t.id); }
 

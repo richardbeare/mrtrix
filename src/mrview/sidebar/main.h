@@ -50,8 +50,8 @@ namespace MR {
           class SelectorEntry : public Gtk::TreeModel::ColumnRecord {
             public:
               SelectorEntry() { add (ID); add (name); }
-              Gtk::TreeModelColumn<int> ID;
-              Gtk::TreeModelColumn<std::string> name;
+              Gtk::TreeModelColumn<gint> ID;
+              Gtk::TreeModelColumn<String> name;
           };
 
           SelectorEntry    entry;
@@ -60,7 +60,7 @@ namespace MR {
           Glib::RefPtr<Gtk::ListStore> selector_list;
           Base*           list[NUM_SIDEBAR];
 
-          void      init (uint index);
+          void      init (guint index);
           void      on_selector ();
 
           friend class MR::Viewer::Window;

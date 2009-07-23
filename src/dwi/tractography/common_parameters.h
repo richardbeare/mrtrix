@@ -34,7 +34,7 @@ namespace MR {
         DT_PROB = 1,
         SD_STREAM = 2,
         SD_PROB = 3,
-        UNDEFINED = INT_MAX
+        UNDEFINED = G_MAXINT
       } Method;
 
 
@@ -45,9 +45,9 @@ namespace MR {
           void        reset ();
 
           Method      method;
-          std::string      cmd, source, mask;
+          String      cmd, source, mask;
           float       step_size, max_dist, threshold, init_threshold, min_curv, mask_threshold;
-          uint32_t     max_num_tracks, max_num_tracks_generated, num_tracks_generated;
+          guint32     max_num_tracks, max_num_tracks_generated, num_tracks_generated;
 
           bool        unidirectional;
           Point       init_dir;

@@ -42,7 +42,7 @@ DESCRIPTION = {
 };
 
 ARGUMENTS = {
-  Argument ("image", "input image", "the input image.", AllowMultiple).type_image_in (),
+  Argument ("image", "input image", "the input image.", true, true).type_image_in (),
   Argument::End
 };
 
@@ -57,15 +57,15 @@ OPTIONS = {
 
 EXECUTE {
 
-  std::string grad_file;
+  String grad_file;
   std::vector<OptBase> opt = get_options (0);
   if (opt.size()) grad_file = opt[0][0].get_string();
 
-  for (size_t i = 0; i < argument.size(); i++) {
+  for (guint i = 0; i < argument.size(); i++) {
     Image::Object& in (*argument[i].get_image()); 
     cout << in.header().description();
 
-    if (grad_file.size() && in.header().DW_scheme.is_set()) 
+    if (grad_file.size() && in.header().DW_scheme.is_valid()) 
         in.header().DW_scheme.save (grad_file);
   }
 }

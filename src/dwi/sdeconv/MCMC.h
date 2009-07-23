@@ -48,17 +48,17 @@ namespace MR {
       Vector              p_sigs;
       Vector              FOD;
       Vector              tmp;
-      double             sigma;
+      gdouble             sigma;
       NumberSequence      p_bzeros, p_dwis, index_pos, min_index_pos;
       NumberSequence      B_index, N_index;
       Vector*             M_col;
-      double*            M_col_norm2;
+      gdouble*            M_col_norm2;
       gsl_rng*            rng;
 
-      double             eval_f(Vector& residue);
+      gdouble             eval_f(Vector& residue);
       void                eval_df(Vector& df, const Vector& residue);
       void                subsolve(NumberSequence& pos_val);
-      double             min_fval;
+      gdouble             min_fval;
 
       Matrix              B, Binv, N;
       Vector              rcost, ones;
@@ -70,15 +70,15 @@ namespace MR {
       MCMCSphericalDeconv();
       ~MCMCSphericalDeconv();
 
-      int  init(SHcoefs& response, Vector& init_filter,
-                Matrix& DW_encoding, Matrix& HR_encoding, double noise_level, uint lmax = 8);
+      gint  init(SHcoefs& response, Vector& init_filter,
+                Matrix& DW_encoding, Matrix& HR_encoding, gdouble noise_level, guint lmax = 8);
 
       void   set(Vector& sigs);
-      float iterate_MAP();
-      int   iterate_MAP2();
-      int   iterate_MAP3(double& fval);
+      gfloat iterate_MAP();
+      gint   iterate_MAP2();
+      gint   iterate_MAP3(gdouble& fval);
       void   iterate_MCMC();
-      void   FOD2SH(const Vector& fod, Vector& SH, uint lmax = 8);
+      void   FOD2SH(const Vector& fod, Vector& SH, guint lmax = 8);
       void   get_state(Vector& state) const;
       void   get_best_state(Vector& state);
       void   get_sigs(Vector& sigs) const;
@@ -90,11 +90,11 @@ namespace MR {
 
 
 
-  inline double rand_truncated_Gaussian(const gsl_rng* r, double mu, double sigma)
+  inline gdouble rand_truncated_Gaussian(const gsl_rng* r, gdouble mu, gdouble sigma)
   {
-    double zero = gsl_cdf_gaussian_P(-mu, sigma);
-    double rn = gsl_rng_uniform(r);
-    double val = rn * (1.0 - zero) + zero;
+    gdouble zero = gsl_cdf_gaussian_P(-mu, sigma);
+    gdouble rn = gsl_rng_uniform(r);
+    gdouble val = rn * (1.0 - zero) + zero;
     val = mu + gsl_cdf_ugaussian_Pinv(val)*sigma;
     if (isinf(val) || val < 0.0) val = 0.0;
     return (val);
@@ -114,7 +114,7 @@ namespace MR {
     SH.multiply(fconv, fod);
   }
 
-  inline double MCMCSphericalDeconv::eval_f(Vector& residue)
+  inline gdouble MCMCSphericalDeconv::eval_f(Vector& residue)
   {
     residue.multiply(fconv, FOD);
     residue.sub(p_sigs);

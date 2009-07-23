@@ -18,68 +18,131 @@
     You should have received a copy of the GNU General Public License
     along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
 
+
+    02-09-2008 J-Donald Tournier <d.tournier@brain.org.au>
+    * tidied up class structure (MMap::Base is now private to MMap)
+
 */
 
 #ifndef __file_mmap_h__
 #define __file_mmap_h__
 
-#include <iostream>
-#include <cassert>
-#include <stdint.h>
+#include "ptr.h"
 
 namespace MR {
   namespace File {
 
     class MMap {
       public:
-        MMap (const std::string& fname, off64_t desired_size_if_inexistant = 0, off64_t data_offset = 0, const char* suffix = NULL);
-        ~MMap ();
 
-        std::string  name () const  { return (filename); }
-        off64_t      size () const  { return (msize); }
-        template <class T> T* address () const { return (static_cast<T*> (addr)); }
-        template <class T> T* data () const { return (static_cast<T*> (addr + byte_offset)); }
-        off64_t      offset () const { return (byte_offset); }
+        MMap () : base (NULL) { }
+        MMap (const String& fname, gsize desired_size_if_inexistant = 0, const gchar* suffix = NULL) : base (NULL) { init (fname, desired_size_if_inexistant, suffix); }
 
-        bool is_ready () const                  { return (msize); }
-        bool is_mapped () const                 { return (addr); }
-        bool is_read_only () const              { return (read_only); }
-        bool is_marked_for_deletion () const    { return (delete_after); }
+        void              init (const String& fname, gsize desired_size_if_inexistant = 0, const gchar* suffix = NULL);
+        String            name () const                     { return (base ? base->filename : ""); }
+        gsize             size () const                     { return (base ? base->msize : 0); }
+        void              resize (gsize  new_size);
 
-        void map ();
-        void unmap ();
-        void resize (off64_t new_size);
+        void              map ();
+        void*             address () const                  { return (base ? base->addr : NULL); }
+        void              unmap ();
 
-        void set_offset (off64_t new_offset) { byte_offset = new_offset; }
-        void set_read_only (bool is_read_only) {
-          if (read_only == is_read_only) return; 
-          bool was_mapped = ( addr != NULL );
-          unmap(); 
-          read_only = is_read_only; 
-          if (was_mapped) map();
-        }
-        void mark_for_deletion () { delete_after = true; }
+        void              set_read_only (bool is_read_only);
+        void              mark_for_deletion ()           { if (base) base->delete_after = true; }
 
-        bool changed () const;
+        bool              is_ready () const                  { return (base ? base->msize : false); }
+        bool              is_mapped () const                 { return (base ? base->addr : false); }
+        bool              is_read_only () const              { return (base ? base->read_only : true); }
+        bool              is_marked_for_deletion () const    { return (base ? base->delete_after : false); }
 
-        friend std::ostream& operator<< (std::ostream& stream, const MMap& m) {
-          stream << "MMap { " << m.filename << " [" << m.fd << "] mapped at " << m.addr << ", size " << m.msize << " }";
+        bool              changed () const;
+
+        friend std::ostream& operator<< (std::ostream& stream, const MMap& m)
+        {
+          stream << "MMap: ";
+          if (!m.base) stream << "(null)";
+          else stream << *m.base;
           return (stream);
         }
 
-      protected:
-        int               fd;
-        std::string       filename;     /**< The name of the file. */
-        uint8_t*          addr;         /**< The address in memory where the file has been mapped. */
-        off64_t           msize;        /**< The size of the memory-mapping, should correspond to the size of the file. */
-        off64_t           byte_offset;  /**< The byte offset to the start of the data, where relevant. */
-        bool              read_only;    /**< A flag to indicate whether the file is mapped as read-only. */
-        bool              delete_after;
-        time_t            mtime;
-
       private:
-        MMap (const MMap& mmap) { assert (0); }
+        class Base {
+          private:
+            Base () : fd (-1), addr (NULL), msize (0), read_only (true), delete_after (false), mtime (0) { }
+            ~Base ();
+
+            int               fd;
+            String            filename;     /**< The name of the file. */
+            void*             addr;         /**< The address in memory where the file has been mapped. */
+            gsize             msize;        /**< The size of the memory-mapping, should correspond to the size of the file. */
+            bool              read_only;    /**< A flag to indicate whether the file is mapped as read-only. */
+            bool              delete_after;
+            time_t            mtime;
+
+            void              map ();
+            void              unmap ();
+            void              resize (gsize  new_size);
+
+            friend class RefPtr<Base>;
+            friend class MMap;
+            friend std::ostream& operator<< (std::ostream& stream, const Base& m)
+            {
+              stream << "{ " << m.filename << " [" << m.fd << "] mapped at " << m.addr << ", size " << m.msize << " }";
+              return (stream);
+            }
+        };
+
+
+        RefPtr<Base>  base;
     };
+
+
+
+
+
+
+
+
+
+
+
+
+    inline void MMap::set_read_only (bool is_read_only)   
+    { 
+      if (!base) return;
+      if (base->read_only == is_read_only) return; 
+      bool was_mapped = (base->addr != NULL);
+      base->unmap(); 
+      base->read_only = is_read_only; 
+      if (was_mapped) base->map();
+    }
+
+
+
+
+    inline void MMap::map ()
+    {
+      if (!base) throw Exception ("MMap not initialised!");
+      if (!base->addr) base->map();
+    }
+
+
+
+    inline void MMap::unmap ()
+    {
+      if (!base) throw Exception ("MMap not initialised!");
+      if (base->addr) base->unmap();
+    }
+
+
+    inline void MMap::resize (gsize new_size)
+    {
+      if (!base) throw Exception ("MMap not initialised!");
+      base->resize (new_size);
+    }
+
+
+
 
 
   }

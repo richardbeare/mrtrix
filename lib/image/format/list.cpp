@@ -27,28 +27,18 @@
 namespace MR {
   namespace Image {
 
-    namespace {
-      Format::MRtrix     mrtrix_handler;
-      Format::MRI        mri_handler;
-      Format::NIfTI      nifti_handler;
-      Format::Analyse    analyse_handler;
-      Format::XDS        xds_handler;
-      Format::DICOM      dicom_handler;
-    }
-
     const Format::Base* Object::handlers[] = {
-      &mrtrix_handler,
-      &mri_handler,
-      &nifti_handler,
-      &analyse_handler,
-      &xds_handler,
-      &dicom_handler,
+      new Format::MRtrix,
+      new Format::MRI,
+      new Format::NIfTI,
+      new Format::Analyse,
+      new Format::XDS,
+      new Format::DICOM,
       NULL
     };
 
 
-
-    const char* Format::known_extensions[] = {
+    const gchar* Format::known_extensions[] = {
       ".mih",
       ".mif",
       ".img",

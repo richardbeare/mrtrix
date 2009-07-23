@@ -35,8 +35,8 @@ namespace MR {
       public:
         DisplayArea ();
 
-        void   resize (uint rows, uint columns);
-        Pane&  operator () (uint row, uint column) { return (*panes[column+row*NC]); }
+        void   resize (guint rows, guint columns);
+        Pane&  operator () (guint row, guint column) { return (*panes[column+row*NC]); }
         Pane&  current () { return (*panes[0]); }
 
         bool   on_key_press (GdkEventKey* event);
@@ -46,7 +46,7 @@ namespace MR {
       protected:
         typedef std::vector<RefPtr<Pane> >::iterator  iterator;
         std::vector<RefPtr<Pane> >   panes;
-        uint  NR, NC;
+        guint  NR, NC;
         sigc::connection idle_connection;
 
         int  do_update ();

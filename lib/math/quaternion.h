@@ -49,10 +49,10 @@ namespace MR {
         }
         Quaternion (const float* matrix)             { from_matrix (matrix); }
 
-        operator bool () const   { return (!(isnan (x[0]) || isnan (x[1]) || isnan (x[2]) || isnan (x[3]))); }
-        bool          operator! () const   { return (isnan (x[0]) || isnan (x[1]) || isnan (x[2]) || isnan (x[3])); }
+        operator bool () const   { return (!(gsl_isnan (x[0]) || gsl_isnan (x[1]) || gsl_isnan (x[2]) || gsl_isnan (x[3]))); }
+        bool          operator! () const   { return (gsl_isnan (x[0]) || gsl_isnan (x[1]) || gsl_isnan (x[2]) || gsl_isnan (x[3])); }
 
-        void          invalidate ()  { x[0] = x[1] = x[2] = x[3] = NAN; }
+        void          invalidate ()  { x[0] = x[1] = x[2] = x[3] = GSL_NAN; }
         void          normalise ()
         {
           float n = 1.0 / sqrt (x[0]*x[0] + x[1]*x[1] + x[2]*x[2] + x[3]*x[3]);

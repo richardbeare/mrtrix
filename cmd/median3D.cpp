@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -36,7 +34,7 @@ DESCRIPTION = {
 };
 
 ARGUMENTS = {
-  Argument ("input", "input image", "input image to be median-filtered.").type_image_in (),
+  Argument ("input", "input image", "input image to be median-filtered.", true, true).type_image_in (),
   Argument ("output", "output image", "the output image.").type_image_out (),
   Argument::End
 };
@@ -46,31 +44,29 @@ OPTIONS = { Option::End };
 
 EXECUTE {
   Image::Object& in_obj (*argument[0].get_image());
+  in_obj.optimise();
 
-  Image::Voxel in (in_obj);
+  Image::Position in (in_obj);
   Image::Header header (in.image.header());
 
-  Image::Voxel out (*argument[1].get_image (header));
+  Image::Position out (*argument[1].get_image (header));
 
   int from[3], to[3], n, n1, n2, nc, i;
   float val, v[14], cm, t;
   bool avg;
 
-  in.image.map();
-  out.image.map();
-
-  ProgressBar::init (voxel_count(out), "median filtering...");
+  ProgressBar::init (out.voxel_count(), "median filtering...");
 
   do { 
-    for (out[2] = 0; out[2] < out.dim(2); out[2]++) {
+    for (out.set(2,0); out[2] < out.dim(2); out.inc(2)) {
       from[2] = out[2] > 0 ? out[2]-1 : 0;
       to[2] = out[2] < out.dim(2)-1 ? out[2]+2 : out.dim(2);
       n2 = to[2]-from[2];
-      for (out[1] = 0; out[1] < out.dim(1); out[1]++) {
+      for (out.set(1,0); out[1] < out.dim(1); out.inc(1)) {
         from[1] = out[1] > 0 ? out[1]-1 : 0;
         to[1] = out[1] < out.dim(1)-1 ? out[1]+2 : out.dim(1);
         n1 = n2*(to[1]-from[1]);
-        for (out[0] = 0; out[0] < out.dim(0); out[0]++) {
+        for (out.set(0,0); out[0] < out.dim(0); out.inc(0)) {
           from[0] = out[0] > 0 ? out[0]-1 : 0;
           to[0] = out[0] < out.dim(0)-1 ? out[0]+2 : out.dim(0);
           n = n1*(to[0]-from[0]);
@@ -79,9 +75,9 @@ EXECUTE {
           nc = 0;
           cm = -INFINITY;
 
-          for (in[2] = from[2]; in[2] < to[2]; in[2]++) {
-            for (in[1] = from[1]; in[1] < to[1]; in[1]++) {
-              for (in[0] = from[0]; in[0] < to[0]; in[0]++) {
+          for (in.set(2,from[2]); in[2] < to[2]; in.inc(2)) {
+            for (in.set(1,from[1]); in[1] < to[1]; in.inc(1)) {
+              for (in.set(0,from[0]); in[0] < to[0]; in.inc(0)) {
                 val = in.value();
                 if (nc < n) {
                   v[nc] = val;
@@ -111,7 +107,7 @@ EXECUTE {
             cm = (cm+t)/2.0;
           }
 
-          out.value() =  cm;
+          out.value (cm);
           ProgressBar::inc();
         }
       }

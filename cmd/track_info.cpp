@@ -21,9 +21,9 @@
 */
 
 #include <fstream>
+#include <glibmm/stringutils.h>
 
 #include "app.h"
-#include "progressbar.h"
 #include "dwi/tractography/file.h"
 #include "dwi/tractography/properties.h"
 
@@ -39,7 +39,7 @@ DESCRIPTION = {
 };
 
 ARGUMENTS = {
-  Argument ("tracks", "track file", "the input track file.", AllowMultiple).type_file (),
+  Argument ("tracks", "track file", "the input track file.", true, true).type_file (),
   Argument::End
 };
 
@@ -57,7 +57,7 @@ OPTIONS = {
 EXECUTE {
 
   std::vector<OptBase> opt = get_options (0); 
-  uint count = 0;
+  guint count = 0;
 
   for (std::vector<ArgBase>::iterator arg = argument.begin(); arg != argument.end(); ++arg) {
     Tractography::Properties properties;
@@ -67,14 +67,14 @@ EXECUTE {
     std::cout << "***********************************\n";
     std::cout << "  Tracks file: \"" << arg->get_string() << "\"\n";
     for (Tractography::Properties::iterator i = properties.begin(); i != properties.end(); ++i) {
-      std::string S (i->first + ':');
+      String S (i->first + ':');
       S.resize (22, ' ');
       std::cout << "    " << S << i->second << "\n";
     }
 
     if (properties.comments.size()) {
       std::cout << "    Comments:             ";
-      for (std::vector<std::string>::iterator i = properties.comments.begin(); i != properties.comments.end(); ++i)
+      for (std::vector<String>::iterator i = properties.comments.begin(); i != properties.comments.end(); ++i)
         std::cout << ( i == properties.comments.begin() ? "" : "                       " ) << *i << "\n";
     }
 
@@ -86,13 +86,13 @@ EXECUTE {
       ProgressBar::init (0, "writing track data to ascii files");
       std::vector<Point> tck;
       while (file.next (tck)) {
-        std::string filename (opt[0][0].get_string());
+        String filename (opt[0][0].get_string());
         filename += "-000000.txt";
-        std::string num (str(count));
+        String num (str(count));
         filename.replace (filename.size()-4-num.size(), num.size(), num);
 
         std::ofstream out (filename.c_str());
-        if (!out) throw Exception ("error opening ascii file \"" + filename + "\": " + strerror (errno));
+        if (!out) throw Exception ("error opening ascii file \"" + filename + "\": " + Glib::strerror (errno));
 
         for (std::vector<Point>::iterator i = tck.begin(); i != tck.end(); ++i)
           out << (*i)[0] << " " << (*i)[1] << " " << (*i)[2] << "\n";

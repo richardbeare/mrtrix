@@ -34,14 +34,14 @@ namespace MR {
     namespace Format {
 
       extern bool print_all;
-      extern const char* known_extensions[];
+      extern const gchar* known_extensions[];
 
       class Base {
         public:
-          Base (const char* desc) : description (desc) { }
+          Base (const gchar* desc) : description (desc) { }
           virtual ~Base() { }
 
-          const char*        description;
+          const gchar*        description;
 
           virtual bool        read (Mapper& dmap, Header& H) const = 0;
           virtual bool        check (Header& H, int num_axes = 0) const = 0;

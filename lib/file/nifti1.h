@@ -63,7 +63,7 @@
    NIFTI-1 FLAG (MAGIC STRINGS):
    ----------------------------
    To flag such a struct as being conformant to the NIFTI-1 spec, the last 4
-   bytes of the header must be either the C std::string "ni1" or "n+1";
+   bytes of the header must be either the C String "ni1" or "n+1";
    in hexadecimal, the 4 bytes
      6E 69 31 00   or   6E 2B 31 00
    (in any future version of this format, the '1' will be upgraded to '2',

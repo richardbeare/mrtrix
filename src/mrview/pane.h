@@ -43,7 +43,7 @@ namespace MR {
       public:
         Pane ();
 
-        void  set_mode (uint index) { mode = Mode::create (*this, index); }   
+        void  set_mode (guint index) { mode = Mode::create (*this, index); }   
         bool  check_focus () { /* TODO */ return (false); }
 
         bool  gl_start () { return (gl_area.start()); }

@@ -33,7 +33,7 @@ namespace MR {
         public:
           SDParameters () { reset(); }
           void        reset ();
-          uint       lmax, max_trials;
+          guint       lmax, max_trials;
           bool        precomputed;
       };
 

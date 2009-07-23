@@ -30,12 +30,12 @@ namespace MR {
   namespace DWI {
     namespace Tractography {
 
-      class Properties : public std::map<std::string, std::string> {
+      class Properties : public std::map<String, String> {
         public:
           std::vector<RefPtr<ROI> >  roi;
-          std::vector<std::string>          comments;
+          std::vector<String>          comments;
 
-          void  clear () { std::map<std::string, std::string>::clear(); roi.clear(); comments.clear(); }
+          void  clear () { std::map<String, String>::clear(); roi.clear(); comments.clear(); }
       };
 
 
@@ -47,9 +47,9 @@ namespace MR {
         stream << "ROI: ";
         for (std::vector<RefPtr<ROI> >::const_iterator i = P.roi.begin(); i != P.roi.end(); ++i) stream << *(*i) << ", ";
         stream << "dict: ";
-        for (std::map<std::string, std::string>::const_iterator i = P.begin(); i != P.end(); ++i) stream << "[ " << i->first << ": " << i->second << " ], ";
+        for (std::map<String, String>::const_iterator i = P.begin(); i != P.end(); ++i) stream << "[ " << i->first << ": " << i->second << " ], ";
         stream << "comments: ";
-        for (std::vector<std::string>::const_iterator i = P.comments.begin(); i != P.comments.end(); ++i) stream << "\"" << *i << "\", ";
+        for (std::vector<String>::const_iterator i = P.comments.begin(); i != P.comments.end(); ++i) stream << "\"" << *i << "\", ";
         return (stream);
       }
 

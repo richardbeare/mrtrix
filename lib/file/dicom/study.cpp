@@ -33,15 +33,15 @@ namespace MR {
     namespace Dicom {
 
       RefPtr<Series> Study::find (
-          const std::string& series_name, 
-          uint         series_number,
-          const std::string& series_modality, 
-          const std::string& series_date,
-          const std::string& series_time)
+          const String& series_name, 
+          guint         series_number,
+          const String& series_modality, 
+          const String& series_date,
+          const String& series_time)
       {
         bool match;
 
-        for (uint n = 0; n < size(); n++) {
+        for (guint n = 0; n < size(); n++) {
           match = true;
           if (series_name == (*this)[n]->name) {
             if (series_number == (*this)[n]->number) {
@@ -84,7 +84,7 @@ namespace MR {
               format_date(item.date).c_str(),
               format_time(item.time).c_str() );
 
-        for (uint n = 0; n < item.size(); n++) stream << (*item[n]);
+        for (guint n = 0; n < item.size(); n++) stream << (*item[n]);
         return (stream);
       }
 

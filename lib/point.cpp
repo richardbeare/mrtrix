@@ -23,6 +23,6 @@
 #include "point.h"
 
 namespace MR {
-  Point Point::Invalid (NAN, NAN, NAN);
+  Point Point::Invalid (GSL_NAN, GSL_NAN, GSL_NAN);
 }
 

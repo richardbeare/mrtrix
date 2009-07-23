@@ -36,14 +36,14 @@ namespace MR {
       class QuickScan {
 
         public:
-          bool read (const std::string& file_name, bool print_DICOM_fields = false, bool print_CSA_fields = false);
+          bool read (const String& file_name, bool print_DICOM_fields = false, bool print_CSA_fields = false);
 
-          std::string      filename, modality;
-          std::string      patient, patient_ID, patient_DOB;
-          std::string      study, study_ID, study_date, study_time;
-          std::string      series, series_date, series_time;
-          std::string      sequence;
-          uint       series_number, bits_alloc, dim[2], data;
+          String      filename, modality;
+          String      patient, patient_ID, patient_DOB;
+          String      study, study_ID, study_date, study_time;
+          String      series, series_date, series_time;
+          String      sequence;
+          guint       series_number, bits_alloc, dim[2], data;
       };
 
       std::ostream& operator<< (std::ostream& stream, const QuickScan& file);

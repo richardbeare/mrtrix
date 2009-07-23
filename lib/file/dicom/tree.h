@@ -35,16 +35,16 @@ namespace MR {
 
       class Tree : public std::vector< RefPtr<Patient> > { 
         protected:
-          void    read_dir (const std::string& filename);
-          void    read_file (const std::string& filename);
+          void    read_dir (const String& filename);
+          void    read_file (const String& filename);
          
         public:
-          std::string    description;
-          void      read (const std::string& filename);
+          String    description;
+          void      read (const String& filename);
           RefPtr<Patient>   find (
-              const std::string& patient_name, 
-              const std::string& patient_ID = "", 
-              const std::string& patient_DOB = "");
+              const String& patient_name, 
+              const String& patient_ID = "", 
+              const String& patient_DOB = "");
 
           void       sort();
       }; 
@@ -63,9 +63,9 @@ namespace MR {
 
 
       inline void Tree::sort() {
-        for (uint patient = 0; patient < size(); patient++) {
+        for (guint patient = 0; patient < size(); patient++) {
           Patient& pat (*((*this)[patient]));
-          for (uint study = 0; study < pat.size(); study++) 
+          for (guint study = 0; study < pat.size(); study++) 
             std::sort (pat[study]->begin(), pat[study]->end());
         }
       }

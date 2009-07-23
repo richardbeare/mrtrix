@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -71,7 +69,7 @@ EXECUTE {
   }
 
   int lastdim;
-  for (lastdim = int (header.axes.size())-1; lastdim > 0 && header.axes[lastdim].dim <= 1; lastdim--);
+  for (lastdim = header.axes.ndim()-1; lastdim > 0 && header.axes.dim[lastdim] <= 1; lastdim--);
 
   if (axis < 0) axis = lastdim;
   else if (axis >= lastdim) 
@@ -79,37 +77,35 @@ EXECUTE {
 
   info ("averaging along axis " + str (axis));
 
-  header.axes.resize (lastdim+1);
-  header.axes[axis].dim = 1;
+  header.axes.set_ndim (lastdim+1);
+  header.axes.dim[axis] = 1;
   if (in_obj.is_complex()) header.data_type = DataType::CFloat32;
   else header.data_type = DataType::Float32;
 
-  Image::Voxel in (in_obj);
-  Image::Voxel out (*argument[1].get_image (header));
+  Image::Position in (in_obj);
+  Image::Position out (*argument[1].get_image (header));
 
-  in.image.map();
-  out.image.map();
 
   float norm = 1.0 / in.dim (axis);
   
-  ProgressBar::init (voxel_count(out), "averaging...");
+  ProgressBar::init (out.voxel_count(), "averaging...");
 
   do {
     float re = 0.0, im = 0.0;
 
-    for (in[3] = 0; in[3] < in.dim(3); in[3]++) {
-      if (geometric) re += log (in.real());
+    for (in.set (3,0); in[3] < in.dim(3); in.inc(3)) {
+      if (geometric) re += log (in.re());
       else {
-        re += in.real();
-        if (in.is_complex()) im += in.imag();
+        re += in.re();
+        if (in.is_complex()) im += in.im();
       }
     }
 
     re *= norm;
 
     if (geometric) re = exp (re);
-    out.real() = re;
-    if (in.is_complex()) out.imag() = norm*im;
+    out.re (re);
+    if (in.is_complex()) out.im (norm*im);
 
     in++;
     ProgressBar::inc();

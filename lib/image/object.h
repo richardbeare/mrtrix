@@ -27,11 +27,14 @@
 #include "image/header.h"
 #include "image/mapper.h"
 #include "image/format/base.h"
-#include "math/complex.h"
+#include "math/complex_number.h"
 
 namespace MR {
   namespace Dialog { class File; }
   namespace Image {
+
+    class Interp;
+    class Position;
 
     /*! \defgroup Image Image access
      * \brief Classes and functions providing access to image data. */
@@ -41,7 +44,7 @@ namespace MR {
     
     class Object {
       public:
-        Object () { } //: start (0) { memset (stride, 0, MRTRIX_MAX_NDIMS*sizeof(ssize_t)); }
+        Object () : start (0) { memset (stride, 0, MRTRIX_MAX_NDIMS*sizeof(gssize)); }
         ~Object ()
         { 
           info ("closing image \"" + H.name + "\"...");
@@ -50,70 +53,86 @@ namespace MR {
 
         const Header&        header () const         { return (H); }
 
-        void                 open (const std::string& imagename, bool is_read_only = true);
-        void                 create (const std::string& imagename, Header &template_header);
+        void                 open (const String& imagename, bool is_read_only = true);
+        void                 create (const String& imagename, Header &template_header);
         void                 concatenate (std::vector<RefPtr<Object> >& images);
 
         void                 map ()                  { if (!is_mapped()) M.map (H); }
         void                 unmap ()                { if (is_mapped()) M.unmap (H); }
         bool                 is_mapped () const      { return (M.is_mapped()); }
 
-        int                  dim (size_t index) const { return (H.dim (index)); } 
-        size_t               ndim () const            { return (H.ndim()); }
-        float                vox (size_t index) const { return (H.vox (index)); }
-        const std::string&   name () const           { return (H.name); }
+        int                  dim (guint index) const { return (H.axes.dim[index]); } 
+        int                  ndim () const           { return (H.axes.ndim()); }
+        float                vox (guint index) const { return (H.axes.vox[index]); }
+        const String&        name () const           { return (H.name); }
         bool                 is_complex () const     { return (H.data_type.is_complex()); }
 
-        const std::vector<std::string>&  comments () const   { return (H.comments); }
-        const Math::Matrix<float>&       transform () const  { return (H.transform()); }
-        const Math::Matrix<float>&       DW_scheme () const  { return (H.DW_scheme); }
-
+        const std::vector<String>&  comments () const { return (H.comments); }
         DataType             data_type () const       { return (H.data_type); }
-        float                offset () const          { return (H.offset); }
-        float                scale () const           { return (H.scale); }
+        const Math::Matrix&  DW_scheme () const       { return (H.DW_scheme); }
+        gfloat               offset () const          { return (H.offset); }
+        gfloat               scale () const           { return (H.scale); }
         
         bool                 output_name () const     { return (M.output_name.size()); }
         void                 no_output_name ()        { M.output_name.clear(); }
 
-        void set_temporary (bool yesno = true) {
+        void                 set_temporary (bool yesno = true) {
           M.temporary = yesno; 
-          if (M.temporary) {
-            for (size_t n = 0; n < M.list.size(); n++) 
-              M.list[n].fmap.mark_for_deletion(); 
-          }
+          if (M.temporary) { for (guint n = 0; n < M.list.size(); n++) M.list[n].fmap.mark_for_deletion(); }
         }
 
         bool                 read_only () const   { return (H.read_only); }
         void                 set_read_only (bool read_only) { M.set_read_only (read_only); H.read_only = read_only; }
-        const char*          format () const      { return (H.format); }
+
+        const gchar*         format () const      { return (H.format); }
+
+
         const Axes&          axes () const;
-        std::string          description () const { return (H.description()); }
+
+        gsize                memory_footprint (guint up_to_dim = MRTRIX_MAX_NDIMS) const { return (H.memory_footprint (up_to_dim)); }
+        gsize                memory_footprint (const gchar* axes_spec) const { return (H.memory_footprint (axes_spec)); }
+
+        gsize                voxel_count (guint up_to_dim = MRTRIX_MAX_NDIMS) const  { return (H.voxel_count (up_to_dim)); }
+        gsize                voxel_count (const gchar* axes_spec) const { return (H.voxel_count (axes_spec)); }
+
+        String               description () const { return (H.description()); }
+
+
+
+        const Math::Matrix&  I2R () const            { return (H.I2R()); }
+        const Math::Matrix&  R2I () const            { return (H.R2I()); }
+        const Math::Matrix&  P2R () const            { return (H.P2R()); }
+        const Math::Matrix&  R2P () const            { return (H.R2P()); }
+
         void                 apply_scaling (float scale, float bias = 0.0) { H.scale *= scale; H.offset = scale * H.offset + bias; }
+        void                 set_transform (const Math::Matrix& T) { H.set_transform (T); }
+
+        void                 optimise () { M.optimised = true; }
 
         friend std::ostream& operator<< (std::ostream& stream, const Object& obj);
 
       protected:
         static const Format::Base* handlers[];
 
-        Header  H;
-        Mapper  M;
-        size_t  start;
-        ssize_t stride[MRTRIX_MAX_NDIMS];
+        Header               H;
+        Mapper               M;
+        gsize                start;
+        gssize               stride[MRTRIX_MAX_NDIMS];
 
         void                 setup ();
 
         float32              scale_from_storage (float32 val) const { return (H.offset + H.scale * val); }
         float32              scale_to_storage (float32 val) const   { return ((val - H.offset) / H.scale); }
 
-        float                real (size_t offset) const                { return (scale_from_storage (M.real (offset))); }
-        void                 real (size_t offset, float val)           { M.real (scale_to_storage (val), offset); }
+        float                re (gsize offset) const                { return (scale_from_storage (M.re (offset))); }
+        void                 re (gsize offset, float val)           { M.re (scale_to_storage (val), offset); }
 
-        float                imag (size_t offset) const                { return (scale_from_storage (M.imag (offset))); }
-        void                 imag (size_t offset, float val)           { M.imag (scale_to_storage (val), offset); }
+        float                im (gsize offset) const                { return (scale_from_storage (M.im (offset))); }
+        void                 im (gsize offset, float val)           { M.im (scale_to_storage (val), offset); }
 
+        friend class Interp;
         friend class Dialog::File;
         friend class Position;
-        friend class Voxel;
         friend class Header;
     };
 

@@ -55,7 +55,7 @@ namespace MR {
 
   void MCMCSphericalDeconv::subsolve(NumberSequence& pos_val)
   {
-    uint i, j;
+    guint i, j;
     Matrix M(fconv.rows(), pos_val.size());
 
     for (j = 0; j < pos_val.size(); j++)
@@ -82,7 +82,7 @@ namespace MR {
 
 
 
-  int MCMCSphericalDeconv::init(SHcoefs& response, Vector& init_filter, Matrix& DW_encoding, Matrix& HR_encoding, double noise_level, uint lmax)
+  gint MCMCSphericalDeconv::init(SHcoefs& response, Vector& init_filter, Matrix& DW_encoding, Matrix& HR_encoding, gdouble noise_level, guint lmax)
   {
     sigma = noise_level;
 
@@ -102,8 +102,8 @@ namespace MR {
     if (genDirectionMatrix(dirs, DW_encoding, p_dwis)) return(1);
 
     // check lmax:
-    size_t n = LforNSH(p_dwis.size());
-    if (n < (uint) lmax) {
+    gsize n = LforNSH(p_dwis.size());
+    if (n < (guint) lmax) {
       g_warning("warning: not enough data to estimate spherical harmonic components up to order %d", lmax);
       g_warning("falling back to lmax = %d", n);
       lmax = n;
@@ -138,9 +138,9 @@ namespace MR {
 
     // include convolution with response function in fconv,
     // and filtered deconvolution in rconv
-    uint row, col, l = 0U;
+    guint row, col, l = 0U;
     for (row = 0; row < rconv_SH.rows(); row++) {
-      if ((uint) NSHforL(2*l) <= row) l++;
+      if ((guint) NSHforL(2*l) <= row) l++;
       for (col = 0; col < rconv_SH.columns(); col++) {
 //         rconv_SH(row, col) *= init_filter[l] / response_RH[l];
         rconv_SH(row, col) *= 1.0 / response_RH[l];
@@ -167,7 +167,7 @@ namespace MR {
     if (M_col_norm2) delete [] M_col_norm2;
 
     M_col = new Vector [FOD.size()];
-    M_col_norm2 = new double [FOD.size()];
+    M_col_norm2 = new gdouble [FOD.size()];
 
 
     for (col = 0; col < fconv.columns(); col++) {
@@ -193,7 +193,7 @@ namespace MR {
     ones.set_all(1.0);
     pinverter.init(Binv, B);
 
-    uint i, j;
+    guint i, j;
     B_index.resize(B.columns());
     N_index.resize(N.columns());
 
@@ -222,7 +222,7 @@ namespace MR {
 
   void MCMCSphericalDeconv::set(Vector& sigs)
   {
-    size_t n;
+    gsize n;
 
     for (n = 0; n < p_dwis.size(); n++)
       p_sigs[n] = sigs[p_dwis[n]]; //norm;
@@ -233,7 +233,7 @@ namespace MR {
 
 //     Vector v;
 //     v.multiply(fconv, FOD);
-//     float f = 0.0;
+//     gfloat f = 0.0;
 //     for (n = 0; n < p_sigs.size(); n++)
 //       f += p_sigs[n]/v[n];
 //     f /= p_sigs.size();
@@ -241,8 +241,8 @@ namespace MR {
 //     for (n = 0; n < FOD.size(); n++)
 //       FOD[n] *= f;
 
-//     float maxval = 0.0;
-//     uint i = 0;
+//     gfloat maxval = 0.0;
+//     guint i = 0;
 //     for (n = 0; n < FOD.size(); n++) {
 //       if (FOD[n] > maxval) {
 //       maxval = FOD[n];
@@ -261,11 +261,11 @@ namespace MR {
 
 
 
-  float MCMCSphericalDeconv::iterate_MAP()
+  gfloat MCMCSphericalDeconv::iterate_MAP()
   {
-    double step = 0.0, f_i;
+    gdouble step = 0.0, f_i;
 
-    for (size_t n = 0; n < FOD.size(); n++) {
+    for (gsize n = 0; n < FOD.size(); n++) {
       f_i = FOD[n];
       FOD[n] = 0.0;
       tmp.multiply(fconv, FOD);
@@ -286,10 +286,10 @@ namespace MR {
 
 
 
-  int MCMCSphericalDeconv::iterate_MAP2()
+  gint MCMCSphericalDeconv::iterate_MAP2()
   {
     Vector residue, df;
-    double fval = eval_f(residue);
+    gdouble fval = eval_f(residue);
 
     if (fval < min_fval) {
       min_fval = fval;
@@ -301,15 +301,15 @@ namespace MR {
     NumberSequence seq = index_pos;
     index_pos.clear();
 
-    int i;
-    for (i = 0; i < (int) FOD.size(); i++) {
+    gint i;
+    for (i = 0; i < (gint) FOD.size(); i++) {
       if (FOD[i] > 0.0) index_pos.push_back(i);
       else if (df[i] < 0.0) index_pos.push_back(i);
     }
 
     bool converged = true;
     if (seq.size() == index_pos.size()) {
-      for (i = 0; i < (int) seq.size(); i++) {
+      for (i = 0; i < (gint) seq.size(); i++) {
         if (seq[i] != index_pos[i]) {
           converged = false;
           break;
@@ -330,11 +330,11 @@ namespace MR {
 //      std::cerr << "\n";
 
     std::cerr << "[ ";
-    for (i = 0; i < (int) seq.size(); i++)
+    for (i = 0; i < (gint) seq.size(); i++)
       std::cerr << seq[i] << " ";
     std::cerr << " ]\n";
     std::cerr << "[ ";
-    for (i = 0; i < (int) index_pos.size(); i++)
+    for (i = 0; i < (gint) index_pos.size(); i++)
       std::cerr << index_pos[i] << " ";
     std::cerr << "]\n";
 
@@ -348,7 +348,7 @@ namespace MR {
 
   void MCMCSphericalDeconv::get_best_state(Vector& state)
   {
-    size_t i;
+    gsize i;
     std::cerr << "Best guess:\n[ ";
     for (i = 0; i < min_index_pos.size(); i++)
       std::cerr << min_index_pos[i] << " ";
@@ -362,9 +362,9 @@ namespace MR {
 
 
 
-  int MCMCSphericalDeconv::iterate_MAP3(double& fval)
+  gint MCMCSphericalDeconv::iterate_MAP3(gdouble& fval)
   {
-    uint i, j;
+    guint i, j;
 
     std::cerr << "mismatches in B: ";
     for (j = 0; j < B.columns(); j++)
@@ -408,8 +408,8 @@ namespace MR {
     tmp.multiply_trans(Binv, ones);
     rcost.multiply_trans(N, tmp);
 
-    uint enter_index = 0;
-    double min_val = 0.0;
+    guint enter_index = 0;
+    gdouble min_val = 0.0;
     bool converged = true;
 
     for (i = 0; i < rcost.size(); i++) {
@@ -434,9 +434,9 @@ namespace MR {
     rcost.multiply(Binv, tmp);
     tmp.multiply(Binv, p_sigs);
 
-    uint leave_index = 0;
+    guint leave_index = 0;
     min_val = INFINITY;
-    double d;
+    gdouble d;
     for (i = 0; i < tmp.size(); i++) {
       if (rcost[i] > 0.0) {
         d = tmp[i]/rcost[i];
@@ -469,9 +469,9 @@ namespace MR {
 
   void MCMCSphericalDeconv::iterate_MCMC()
   {
-    double mu_i, sigma_i;
+    gdouble mu_i, sigma_i;
 
-    for (size_t n = 0; n < FOD.size(); n++) {
+    for (gsize n = 0; n < FOD.size(); n++) {
       FOD[n] = 0.0;
       tmp.multiply(fconv, FOD);
       tmp.sub(p_sigs);
@@ -486,9 +486,9 @@ namespace MR {
 
 
 
-  void MCMCSphericalDeconv::FOD2SH(const Vector& fod, Vector& SH, uint lmax)
+  void MCMCSphericalDeconv::FOD2SH(const Vector& fod, Vector& SH, guint lmax)
   {
-    if (iHR_trans_final.rows() != (uint) NSHforL(lmax)) {
+    if (iHR_trans_final.rows() != (guint) NSHforL(lmax)) {
       Matrix HR_trans_final;
       if (initSHTransform(HR_trans_final, HR_enc, lmax)) return;
 

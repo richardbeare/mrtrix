@@ -43,7 +43,7 @@ namespace MR {
             image (NULL), 
             colourmap (0), 
             format (MR::Image::Real), 
-            orientation (NAN, NAN, NAN, NAN), 
+            orientation (GSL_NAN, GSL_NAN, GSL_NAN, GSL_NAN), 
             projection (2),
             interpolate (true) { memset (channel, 0, MRTRIX_MAX_NDIMS*sizeof(int)); }
           Info (Current& S);
@@ -55,7 +55,7 @@ namespace MR {
           Scaling               scaling;
           int                   channel[MRTRIX_MAX_NDIMS];
           Math::Quaternion      orientation;
-          uint                 projection;
+          guint                 projection;
           Point                 focus;
           bool                  interpolate;
 
@@ -65,7 +65,7 @@ namespace MR {
           bool operator== (const Current& S) const { return (!operator!= (S)); }
           bool operator!= (const Current& S) const;
 
-          bool same_channel (const int* C, uint up_to_dim) const { return (memcmp (channel+3, C+3, (up_to_dim-3)*sizeof(int)) == 0); }
+          bool same_channel (const int* C, guint up_to_dim) const { return (memcmp (channel+3, C+3, (up_to_dim-3)*sizeof(int)) == 0); }
       };
 
 
@@ -82,7 +82,7 @@ namespace MR {
           Scaling&               scaling;
           int*                   channel;
           Math::Quaternion&      orientation;
-          uint&                 projection;
+          guint&                 projection;
           Point&                 focus;
           bool&                  interpolate;
 
@@ -139,7 +139,7 @@ namespace MR {
             projection (PANE), focus (PANE), interpolate (IMAGE) { }
 
           Type image, colourmap, format, scaling, channel, orientation, projection, focus, interpolate;
-          const char* str (Type t) 
+          const gchar* str (Type t) 
           {
             switch (t) {
               case IMAGE: return ("[IMAGE]");
@@ -207,13 +207,13 @@ namespace MR {
 
 
 
-      inline void get_fixed_axes (uint proj, int& axis1, int& axis2)
+      inline void get_fixed_axes (guint proj, int& axis1, int& axis2)
       {
         switch (proj) {
           case 0: axis1 = 1; axis2 = 2; break;
           case 1: axis1 = 0; axis2 = 2; break;
           case 2: axis1 = 0; axis2 = 1; break;
-          default: axis1 = -1; axis2 = -1; assert (false); return;
+          default: assert (false); return;
         }
       }
 

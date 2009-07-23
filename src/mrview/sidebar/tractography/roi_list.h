@@ -53,8 +53,8 @@ namespace MR {
             public:
               Columns() { add (type); add (spec); add (roi); }
 
-              Gtk::TreeModelColumn<std::string> type;
-              Gtk::TreeModelColumn<std::string> spec;
+              Gtk::TreeModelColumn<String> type;
+              Gtk::TreeModelColumn<String> spec;
               Gtk::TreeModelColumn<RefPtr<DWI::Tractography::ROI> > roi;
           };
 

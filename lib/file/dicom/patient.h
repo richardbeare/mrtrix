@@ -35,18 +35,18 @@ namespace MR {
       class Patient : public std::vector< RefPtr<Study> > {
         public:
           Patient (
-              const std::string& patient_name, 
-              const std::string& patient_ID = "", 
-              const std::string& patient_DOB = "");
-          std::string   name;
-          std::string   ID;
-          std::string   DOB;
+              const String& patient_name, 
+              const String& patient_ID = "", 
+              const String& patient_DOB = "");
+          String   name;
+          String   ID;
+          String   DOB;
 
           RefPtr<Study>     find (
-              const std::string& study_name, 
-              const std::string& study_ID = "", 
-              const std::string& study_date = "", 
-              const std::string& study_time = "");
+              const String& study_name, 
+              const String& study_ID = "", 
+              const String& study_date = "", 
+              const String& study_time = "");
 
       };
 
@@ -61,9 +61,9 @@ namespace MR {
 
 
       inline Patient::Patient (
-          const std::string& patient_name, 
-          const std::string& patient_ID, 
-          const std::string& patient_DOB) :
+          const String& patient_name, 
+          const String& patient_ID, 
+          const String& patient_DOB) :
         name (patient_name),
         ID (patient_ID),
         DOB (patient_DOB)

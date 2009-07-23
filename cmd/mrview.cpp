@@ -47,7 +47,7 @@ OPTIONS = {
 
 class MyApp : public MR::App { 
   public: 
-    MyApp (int argc, char** argv) : 
+    MyApp (int argc, gchar** argv) : 
       App (argc, argv, __command_description, __command_arguments, __command_options, __command_version, __command_author, __command_copyright) { } 
     void execute () { }
     void init () { parse_arguments(); }
@@ -55,7 +55,7 @@ class MyApp : public MR::App {
 }; 
 
 
-int main (int argc, char* argv[]) 
+int main (gint argc, gchar* argv[]) 
 { 
   try { 
     MyApp app (argc, argv);  

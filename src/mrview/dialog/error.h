@@ -40,10 +40,10 @@ namespace MR {
 
     class ErrorDialog : public Gtk::Dialog {
       public:
-        ErrorDialog (const std::string& main_message);
+        ErrorDialog (const String& main_message);
 
-        static void error (const std::string& msg);
-        static void info  (const std::string& msg);
+        static void error (const String& msg);
+        static void info  (const String& msg);
 
       protected:
         Gtk::HBox               hbox;
@@ -56,7 +56,7 @@ namespace MR {
           public:
             Columns() { add (icon); add (text); }
             Gtk::TreeModelColumn<Glib::RefPtr<Gdk::Pixbuf> > icon;
-            Gtk::TreeModelColumn<std::string> text;
+            Gtk::TreeModelColumn<String> text;
         };
 
         Columns columns;
@@ -65,9 +65,9 @@ namespace MR {
 
         class ErrorMsg {
           public:
-            ErrorMsg (int log_level, const std::string& message) : loglevel (log_level), text (message) { }
+            ErrorMsg (int log_level, const String& message) : loglevel (log_level), text (message) { }
             int    loglevel;
-            std::string text;
+            String text;
         };
         static std::list<ErrorMsg> messages;
 

@@ -21,28 +21,26 @@
 */
 
 #include "min_max.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 namespace MR {
   
-  void get_min_max (Image::Voxel& ima, float& min, float& max) 
+  void get_min_max (Image::Position& ima, float& min, float& max) 
   {
-    min = INFINITY;
-    max = -INFINITY;
+    min = GSL_POSINF;
+    max = GSL_NEGINF;
 
-    ProgressBar::init (voxel_count(ima.image), "finding min/max...");
+    ProgressBar::init (ima.voxel_count(), "finding min/max...");
 
     do {
-      float val = ima.real();
-      if (finite (val)) {
+      float val = ima.re();
+      if (gsl_finite (val)) {
         if (min > val) min = val;
         if (max < val) max = val;
       }
       if (ima.is_complex()) {
-        val = ima.imag();
-        if (finite (val)) {
+        val = ima.im();
+        if (gsl_finite (val)) {
           if (min > val) min = val;
           if (max < val) max = val;
         }

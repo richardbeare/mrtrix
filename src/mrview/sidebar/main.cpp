@@ -96,7 +96,7 @@ namespace MR {
             int id = row[entry.ID];
             if (!list[id]) init (id);
 
-            for (uint n = 1; n < box.children().size(); n++)
+            for (guint n = 1; n < box.children().size(); n++)
               box.children()[n].get_widget()->hide();
 
             list[id]->show();
@@ -110,7 +110,7 @@ namespace MR {
 
 
 
-      void Main::init (uint index)
+      void Main::init (guint index)
       {
         assert (index < NUM_SIDEBAR);
         assert (list[index] == NULL);

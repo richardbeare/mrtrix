@@ -24,6 +24,7 @@
 
 */
 
+#include <glib/gstrfuncs.h>
 #include "file/dicom/image.h"
 #include "file/dicom/series.h"
 #include "file/dicom/study.h"
@@ -40,12 +41,12 @@ namespace MR {
 
         if (tree.size() == 0) throw Exception ("DICOM tree its empty");
 
-        std::string buf;
+        String buf;
         const Patient* patient_p = NULL;
         if (tree.size() > 1) {
           while (patient_p == NULL) {
             fprintf(stderr, "Select patient (q to abort):\n");
-            for (uint i = 0; i < tree.size(); i++) {
+            for (guint i = 0; i < tree.size(); i++) {
               fprintf (stderr, "  %2u - %s %s %s\n", 
                   i+1, 
                   tree[i]->name.c_str(),  
@@ -54,9 +55,9 @@ namespace MR {
             }
             std::cerr << "? ";
             std::cin >> buf;
-            if (!isdigit (buf[0])) { series.clear(); return (series); }
-            int n = to<int>(buf) - 1;
-            if (n > (int) tree.size()) fprintf (stderr, "invalid selection - try again\n");
+            if (!g_ascii_isdigit (buf[0])) { series.clear(); return (series); }
+            gint n = to<gint>(buf) - 1;
+            if (n > (gint) tree.size()) fprintf (stderr, "invalid selection - try again\n");
             else patient_p = tree[n].get();
           }
         }
@@ -78,7 +79,7 @@ namespace MR {
         if (patient.size() > 1) {
           while (study_p == NULL) {
             fprintf (stderr, "Select study (q to abort):\n");
-            for (uint i = 0; i < patient.size(); i++) {
+            for (guint i = 0; i < patient.size(); i++) {
               fprintf (stderr, "  %4u - %s %s %s %s\n", 
                   i+1, 
                   ( patient[i]->name.size() ? patient[i]->name.c_str() : "unnamed" ),
@@ -88,9 +89,9 @@ namespace MR {
             }
             std::cerr << "? ";
             std::cin >> buf;
-            if (!isdigit (buf[0])) { series.clear(); return (series); }
-            int n = to<int>(buf) - 1;
-            if (n > (int) patient.size()) fprintf (stderr, "invalid selection - try again\n");
+            if (!g_ascii_isdigit (buf[0])) { series.clear(); return (series); }
+            gint n = to<gint>(buf) - 1;
+            if (n > (gint) patient.size()) fprintf (stderr, "invalid selection - try again\n");
             else study_p = patient[n].get();
           }
         }
@@ -113,8 +114,8 @@ namespace MR {
         if (study.size() > 1) {
           while (series.size() == 0) {
             fprintf (stderr, "Select series ('q' to abort):\n");
-            for (uint i = 0; i < study.size(); i++) {
-              fprintf (stderr, "  %2u - %4zu %s images %8s %s (%s) [%u]\n", 
+            for (guint i = 0; i < study.size(); i++) {
+              fprintf (stderr, "  %2u - %4"G_GSIZE_FORMAT" %s images %8s %s (%s) [%u]\n", 
                   i,
                   study[i]->size(), 
                   ( study[i]->modality.size() ? study[i]->modality.c_str() : "" ), 
@@ -125,12 +126,12 @@ namespace MR {
             }
             std::cerr << "? ";
             std::cin >> buf;
-            if (!isdigit (buf[0])) { series.clear(); return (series); }
+            if (!g_ascii_isdigit (buf[0])) { series.clear(); return (series); }
             std::vector<int> seq;
             try { seq = parse_ints (buf); }
             catch (Exception) { fprintf (stderr, "Invalid number sequence - please try again\n"); seq.clear(); }
             if (seq.size()) {
-              for (uint i = 0; i < seq.size(); i++) {
+              for (guint i = 0; i < seq.size(); i++) {
                 if (seq[i] < 0 || seq[i] >= (int) study.size()) {
                   fprintf (stderr, "invalid selection - try again\n");
                   series.clear();

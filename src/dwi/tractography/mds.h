@@ -35,11 +35,11 @@
 /*
    MRI format:
    Magic number:              MDS#         (4 bytes)
-   Byte order specifier:    uint16_t = 1     (2 bytes)
+   Byte order specifier:    guint16 = 1     (2 bytes)
    ...
 Elements:
-ID:                      uint32_t       (4 bytes)
-size:                    uint32_t       (4 bytes)
+ID:                      guint32       (4 bytes)
+size:                    guint32       (4 bytes)
 contents:              unspecified  ('size' bytes)
 ...
 
@@ -55,14 +55,14 @@ namespace MR {
           class Track {
             public:
               MDS*       parent;
-              size_t      offset;
-              uint      count;
+              gsize      offset;
+              guint      count;
               bool       is_BE;
               std::vector<Point> next () const
               {
                 std::vector<Point> V;
-                float32* data = (float32*) ((uint8_t*) parent->get_mmap().address() + offset);
-                for (uint n = 0; n < count; n++) 
+                float32* data = (float32*) ((guint8*) parent->get_mmap().address() + offset);
+                for (guint n = 0; n < count; n++) 
                   V.push_back (Point (get<float32> (data+3*n, is_BE), get<float32> (data+3*n+1, is_BE), get<float32> (data+3*n+2, is_BE) ));
                 return (V);
               }
@@ -72,31 +72,31 @@ namespace MR {
 
           MDS () { current_offset = next = 0; }
 
-          void         read (const std::string& filename, Properties& properties);
+          void         read (const String& filename, Properties& properties);
           std::vector<Track>  tracks;
           bool         changed () const     { return (mmap.changed()); }
 
-          void         create (const std::string& filename, const Properties& properties);
+          void         create (const String& filename, const Properties& properties);
           void         append (const std::vector<Point>& points);
           void         finalize ();
 
-          std::string       name () const    { return (mmap.name()); }
+          String       name () const    { return (mmap.name()); }
 
         private:
           MR::File::MMap  mmap;
-          size_t        current_offset, next;
+          gsize        current_offset, next;
           bool         is_BE;
           std::vector<Tag>   stack;
 
-          uint32_t       read_uint32 (int idx) const;
+          guint32       read_uint32 (int idx) const;
 
         protected:
 
           ROI::Type type;
-          uint8_t shape;
+          guint8 shape;
           Point sphere_pos;
           float sphere_rad;
-          std::string mask_name;
+          String mask_name;
           Properties* prop;
 
 
@@ -105,30 +105,30 @@ namespace MR {
 
           const MR::File::MMap&  get_mmap () const { return (mmap); }
 
-          uint32_t      size () const { return (read_uint32 (1)); }
+          guint32      size () const { return (read_uint32 (1)); }
           Tag          tag () const { Tag T (read_uint32(0)); return (T); }
-          uint32_t      count () const;
-          size_t        offset (uint index = 0) const;
-          const uint8_t* data (uint index = 0) const;
-          uint8_t*       data (uint index = 0);
+          guint32      count () const;
+          gsize        offset (guint index = 0) const;
+          const guint8* data (guint index = 0) const;
+          guint8*       data (guint index = 0);
 
-          std::string       get_string () const;
-          int8_t        get_int8 (uint index = 0) const;
-          uint8_t       get_uint8 (uint index = 0) const;
-          int16_t       get_int16 (uint index = 0) const;
-          uint16_t      get_uint16 (uint index = 0) const;
-          int32_t       get_int32 (uint index = 0) const;
-          uint32_t      get_uint32 (uint index = 0) const;
-          float32      get_float32 (uint index = 0) const;
-          float64      get_float64 (uint index = 0) const;
+          String       get_string () const;
+          gint8        get_int8 (guint index = 0) const;
+          guint8       get_uint8 (guint index = 0) const;
+          gint16       get_int16 (guint index = 0) const;
+          guint16      get_uint16 (guint index = 0) const;
+          gint32       get_int32 (guint index = 0) const;
+          guint32      get_uint32 (guint index = 0) const;
+          float32      get_float32 (guint index = 0) const;
+          float64      get_float64 (guint index = 0) const;
 
-          void         append (Tag tag_id, uint32_t nbytes = 0);
+          void         append (Tag tag_id, guint32 nbytes = 0);
 
-          void         append_string (const Tag& T, const std::string& str);
-          void         append_int8 (const Tag& T, int8_t val);
-          void         append_uint8 (const Tag& T, uint8_t val);
-          void         append_int32 (const Tag& T, int32_t val);
-          void         append_uint32 (const Tag& T, uint32_t val);
+          void         append_string (const Tag& T, const String& str);
+          void         append_int8 (const Tag& T, gint8 val);
+          void         append_uint8 (const Tag& T, guint8 val);
+          void         append_int32 (const Tag& T, gint32 val);
+          void         append_uint32 (const Tag& T, guint32 val);
           void         append_float32 (const Tag& T, float32 val);
           void         append_float32 (const Tag& T, const float32* val, int num);
           void         append_float64 (const Tag& T, const float64* val, int num);
@@ -153,14 +153,14 @@ namespace MR {
 
 
 
-      inline uint32_t MDS::read_uint32 (int idx) const 
-      { return (get<uint32_t> ((uint8_t*) mmap.address() + current_offset + idx*sizeof (uint32_t), is_BE)); }
+      inline guint32 MDS::read_uint32 (int idx) const 
+      { return (get<guint32> ((guint8*) mmap.address() + current_offset + idx*sizeof (guint32), is_BE)); }
 
 
 
 
 
-      inline uint32_t MDS::count () const
+      inline guint32 MDS::count () const
       {
         if (size() == 0) return (0);
         if (tag().type() == DataType::Text) return (1);
@@ -168,25 +168,25 @@ namespace MR {
         return (size() / tag().type().bytes());
       }
 
-      inline size_t MDS::offset (uint index) const
+      inline gsize MDS::offset (guint index) const
       {
-        if (index == 0) return (current_offset + 2*sizeof (uint32_t));
+        if (index == 0) return (current_offset + 2*sizeof (guint32));
         assert (tag().type() != DataType::Bit && tag().type() != DataType::Text);
-        return (current_offset + 2*sizeof (uint32_t) + index*tag().type().bytes());
+        return (current_offset + 2*sizeof (guint32) + index*tag().type().bytes());
       }
 
-      inline const uint8_t* MDS::data (uint index) const
+      inline const guint8* MDS::data (guint index) const
       { 
-        if (index == 0) return ((uint8_t*) mmap.address() + current_offset + 2*sizeof (uint32_t));
+        if (index == 0) return ((guint8*) mmap.address() + current_offset + 2*sizeof (guint32));
         assert (tag().type() != DataType::Bit && tag().type() != DataType::Text);
-        return ((uint8_t*) mmap.address() + current_offset + 2*sizeof (uint32_t) + index*tag().type().bytes());
+        return ((guint8*) mmap.address() + current_offset + 2*sizeof (guint32) + index*tag().type().bytes());
       }
 
-      inline uint8_t* MDS::data (uint index)
+      inline guint8* MDS::data (guint index)
       {
-        if (index == 0) return ((uint8_t*) mmap.address() + current_offset + 2*sizeof (uint32_t));
+        if (index == 0) return ((guint8*) mmap.address() + current_offset + 2*sizeof (guint32));
         assert (tag().type() != DataType::Bit && tag().type() != DataType::Text);
-        return ((uint8_t*) mmap.address() + current_offset + 2*sizeof (uint32_t) + index*tag().type().bytes());
+        return ((guint8*) mmap.address() + current_offset + 2*sizeof (guint32) + index*tag().type().bytes());
       }
 
       inline const std::vector<Tag>& MDS::containers () const   { return (stack); }
@@ -195,59 +195,59 @@ namespace MR {
 
 
 
-      inline std::string MDS::get_string () const { return (std::string ((const char*) data(), size())); }
-      inline int8_t MDS::get_int8 (uint index) const { return (*((int8_t*) data (index))); }
-      inline uint8_t MDS::get_uint8 (uint index) const { return (*((uint8_t*) data (index))); }
-      inline int16_t MDS::get_int16 (uint index) const { return (get<int16_t> (data(index), is_BE)); }
-      inline uint16_t MDS::get_uint16 (uint index) const { return (get<uint16_t> (data(index), is_BE)); }
-      inline int32_t MDS::get_int32 (uint index) const { return (get<int32_t> (data(index), is_BE)); }
-      inline uint32_t MDS::get_uint32 (uint index) const { return (get<uint32_t> (data(index), is_BE)); }
-      inline float32 MDS::get_float32 (uint index) const { return (get<float32> (data(index), is_BE)); }
-      inline float64 MDS::get_float64 (uint index) const { return (get<float64> (data(index), is_BE)); }
+      inline String MDS::get_string () const { return (String ((const gchar*) data(), size())); }
+      inline gint8 MDS::get_int8 (guint index) const { return (*((gint8*) data (index))); }
+      inline guint8 MDS::get_uint8 (guint index) const { return (*((guint8*) data (index))); }
+      inline gint16 MDS::get_int16 (guint index) const { return (get<gint16> (data(index), is_BE)); }
+      inline guint16 MDS::get_uint16 (guint index) const { return (get<guint16> (data(index), is_BE)); }
+      inline gint32 MDS::get_int32 (guint index) const { return (get<gint32> (data(index), is_BE)); }
+      inline guint32 MDS::get_uint32 (guint index) const { return (get<guint32> (data(index), is_BE)); }
+      inline float32 MDS::get_float32 (guint index) const { return (get<float32> (data(index), is_BE)); }
+      inline float64 MDS::get_float64 (guint index) const { return (get<float64> (data(index), is_BE)); }
 
 
 
 
-      inline void MDS::append_string (const Tag& T, const std::string& str)
+      inline void MDS::append_string (const Tag& T, const String& str)
       {
-        uint s = strlen (str.c_str ()); 
+        guint s = strlen (str.c_str ()); 
         append (T, s);
         memcpy (data(), str.c_str (), s); 
       }
 
 
 
-      inline void MDS::append_int8 (const Tag& T, int8_t val)
+      inline void MDS::append_int8 (const Tag& T, gint8 val)
       {
-        append (T, sizeof (int8_t));
-        *((int8_t*) data()) = val;
+        append (T, sizeof (gint8));
+        *((gint8*) data()) = val;
       }
 
 
 
 
-      inline void MDS::append_uint8 (const Tag& T, uint8_t val)
+      inline void MDS::append_uint8 (const Tag& T, guint8 val)
       {
-        append (T, sizeof (uint8_t));
-        *((uint8_t*) data()) = val;
+        append (T, sizeof (guint8));
+        *((guint8*) data()) = val;
       }
 
 
 
 
-      inline void MDS::append_int32 (const Tag& T, int32_t val)
+      inline void MDS::append_int32 (const Tag& T, gint32 val)
       {
-        append (T, sizeof (int32_t));
-        put<int32_t> (val, data(), is_BE);
+        append (T, sizeof (gint32));
+        put<gint32> (val, data(), is_BE);
       }
 
 
 
 
-      inline void MDS::append_uint32 (const Tag& T, uint32_t val)
+      inline void MDS::append_uint32 (const Tag& T, guint32 val)
       {
-        append (T, sizeof (uint32_t));
-        put<uint32_t> (val, data(), is_BE);
+        append (T, sizeof (guint32));
+        put<guint32> (val, data(), is_BE);
       }
 
 

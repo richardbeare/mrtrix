@@ -27,7 +27,8 @@
 
 */
 
-#include "file/path.h"
+#include <glibmm/fileutils.h>
+
 #include "file/config.h"
 #include "image/mapper.h"
 #include "get_set.h"
@@ -53,7 +54,7 @@ namespace MR {
 
       bool DICOM::read (Mapper& dmap, Header& H) const
       {
-        if (!Path::is_dir (H.name)) return (false);
+        if (!Glib::file_test (H.name, Glib::FILE_TEST_IS_DIR)) return (false);
 
         File::Dicom::Tree dicom;
         
@@ -66,7 +67,7 @@ namespace MR {
         dicom_to_mapper (dmap, H, series);
 
         if (print_DICOM_fields || print_CSA_fields) {
-          for (uint s = 0; s < series.size(); s++) 
+          for (guint s = 0; s < series.size(); s++) 
             series[s]->print_fields (print_DICOM_fields, print_CSA_fields);
         }
 

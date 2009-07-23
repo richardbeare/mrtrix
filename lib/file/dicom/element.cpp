@@ -33,7 +33,8 @@
     
 */
 
-#include "file/path.h"
+#include <glibmm/stringutils.h>
+
 #include "file/dicom/element.h"
 #include "get_set.h"
 
@@ -41,7 +42,7 @@ namespace MR {
   namespace File {
     namespace Dicom {
 
-      void Element::set (const std::string& filename)
+      void Element::set (const String& filename)
       {
         group = element = VR = 0;
         size = 0;
@@ -54,12 +55,12 @@ namespace MR {
         if (fmap.size() < 256) throw Exception ("\"" + fmap.name() + "\" is too small to be a valid DICOM file", 3);
         fmap.map();
 
-        next = (uint8_t*) fmap.address();
+        next = (guint8*) fmap.address();
 
         if (memcmp (next + 128, "DICM", 4)) {
           is_explicit = false;
           debug ("DICOM magic number not found in file \"" + fmap.name() + "\" - trying truncated format");
-          if (!Path::has_suffix (fmap.name(), ".dcm")) 
+          if (!Glib::str_has_suffix (fmap.name(), ".dcm")) 
             throw Exception ("file \"" + fmap.name() + "\" does not have the DICOM magic number or the .dcm extension - assuming not DICOM");
         }
         else next += 132;
@@ -82,7 +83,7 @@ namespace MR {
 
         is_explicit = true;
         next = start;
-        VR = ByteOrder::BE (*((uint16_t*) (start+4)));
+        VR = ByteOrder::BE (*((guint16*) (start+4)));
 
         if ((VR == VR_OB) | (VR == VR_OW) | (VR == VR_OF) | (VR == VR_SQ) |
             (VR == VR_UN) | (VR == VR_AE) | (VR == VR_AS) | (VR == VR_AT) |
@@ -108,12 +109,12 @@ namespace MR {
         start = next;
         data = next = NULL;
 
-        if (start < (uint8_t*) fmap.address()) throw Exception ("invalid DICOM element", 3);
-        if (start + 8 > (uint8_t*) fmap.address() + fmap.size()) return (true);
+        if (start < (guint8*) fmap.address()) throw Exception ("invalid DICOM element", 3);
+        if (start + 8 > (guint8*) fmap.address() + fmap.size()) return (true);
 
         is_BE = previous_BO_was_BE;
 
-        group = get<uint16_t> (start, is_BE);
+        group = get<guint16> (start, is_BE);
 
         if (group == GROUP_BYTE_ORDER_SWAPPED) {
           if (!is_BE) 
@@ -122,7 +123,7 @@ namespace MR {
           is_BE = false;
           group = GROUP_BYTE_ORDER;
         }
-        element = get<uint16_t> (start+2, is_BE);
+        element = get<guint16> (start+2, is_BE);
 
         return (false);
       }
@@ -139,16 +140,16 @@ namespace MR {
         data = start + 8;
         if ((is_explicit && group != GROUP_SEQUENCE) || group == GROUP_BYTE_ORDER) {
           // explicit encoding:
-          VR = ByteOrder::BE (*((uint16_t*) (start+4)));
+          VR = ByteOrder::BE (*((guint16*) (start+4)));
           if (VR == VR_OB || VR == VR_OW || VR == VR_OF || VR == VR_SQ || VR == VR_UN || VR == VR_UT) {
-            size = get<uint32_t> (start+8, is_BE);
+            size = get<guint32> (start+8, is_BE);
             data += 4;
           }
-          else size = get<uint16_t> (start+6, is_BE);
+          else size = get<guint16> (start+6, is_BE);
         }
         else {
           // implicit encoding:
-          std::string name = tag_name();
+          String name = tag_name();
           if (!name.size()) {
             if (group%2 == 0) 
               debug ("WARNING: unknown DICOM tag (" + str (group) + ", " + str (element) 
@@ -156,10 +157,10 @@ namespace MR {
             VR = VR_UN;
           }
           else {
-            char t[] = { name[0], name[1] };
-            VR = ByteOrder::BE (*((uint16_t*) t));
+            gchar t[] = { name[0], name[1] };
+            VR = ByteOrder::BE (*((guint16*) t));
           }
-          size = get<uint32_t> (start+4, is_BE);
+          size = get<guint32> (start+4, is_BE);
         }
 
 
@@ -170,7 +171,7 @@ namespace MR {
                 + " (" + str (group) + ", " + str (element) 
                 + ") in file \"" + fmap.name() + "\"", 3);
         }
-        else if (next+size > (uint8_t*) fmap.address() + fmap.size()) throw Exception ("file \"" + fmap.name() + "\" is too small to contain DICOM elements specified", 3);
+        else if (next+size > (guint8*) fmap.address() + fmap.size()) throw Exception ("file \"" + fmap.name() + "\" is too small to contain DICOM elements specified", 3);
         else if (size%2) throw Exception ("odd length (" + str (size) + ") used for DICOM tag " + ( tag_name().size() ? tag_name().substr (2) : "" ) 
               + " (" + str (group) + ", " + str (element) + ") in file \"" + fmap.name() + "", 3);
         else if (VR != VR_SQ && ( group != GROUP_SEQUENCE || element != ELEMENT_SEQUENCE_ITEM ) ) next += size;
@@ -198,22 +199,22 @@ namespace MR {
           case GROUP_BYTE_ORDER:
             switch (element) {
               case ELEMENT_TRANSFER_SYNTAX_UID:
-                if (strncmp ((const char*) data, "1.2.840.10008.1.2.1", size) == 0) {
+                if (strncmp ((const gchar*) data, "1.2.840.10008.1.2.1", size) == 0) {
                   is_BE = false; // explicit VR Little Endian
                   is_explicit = true;
                 }
-                else if (strncmp ((const char*) data, "1.2.840.10008.1.2.2", size) == 0) {
+                else if (strncmp ((const gchar*) data, "1.2.840.10008.1.2.2", size) == 0) {
                   is_BE = true; // Explicit VR Big Endian
                   is_explicit = true;
                 }
-                else if (strncmp ((const char*) data, "1.2.840.10008.1.2", size) == 0) {
+                else if (strncmp ((const gchar*) data, "1.2.840.10008.1.2", size) == 0) {
                   is_BE = false; // Implicit VR Little Endian
                   is_explicit = false;
                 }
-                else if (strncmp ((const char*) data, "1.2.840.10008.1.2.1.99", size) == 0) {
+                else if (strncmp ((const gchar*) data, "1.2.840.10008.1.2.1.99", size) == 0) {
                   throw Exception ("DICOM deflated explicit VR little endian transfer syntax not supported");
                 }
-                else error ("unknown DICOM transfer syntax: \"" + std::string ((const char*) data, size) 
+                else error ("unknown DICOM transfer syntax: \"" + String ((const gchar*) data, size) 
                     + "\" in file \"" + fmap.name() + "\" - ignored");
                 break;
             }
@@ -251,19 +252,19 @@ namespace MR {
 
 
 
-      std::vector<int32_t> Element::get_int () const
+      std::vector<gint32> Element::get_int () const
       {
-        std::vector<int32_t> V;
+        std::vector<gint32> V;
         if (VR == VR_SL) 
-          for (const uint8_t* p = data; p < data + size; p += sizeof (int32_t))
-            V.push_back (get<int32_t> (p, is_BE));
+          for (const guint8* p = data; p < data + size; p += sizeof (gint32))
+            V.push_back (get<gint32> (p, is_BE));
         else if (VR == VR_SS)
-          for (const uint8_t* p = data; p < data + size; p += sizeof (int16_t)) 
-            V.push_back (get<int16_t> (p, is_BE));
+          for (const guint8* p = data; p < data + size; p += sizeof (gint16)) 
+            V.push_back (get<gint16> (p, is_BE));
         else if (VR == VR_IS) {
-          std::vector<std::string> strings (get_string ());
+          std::vector<String> strings (get_string ());
           V.resize (strings.size());
-          for (uint n = 0; n < V.size(); n++) V[n] = to<int32_t> (strings[n]);
+          for (guint n = 0; n < V.size(); n++) V[n] = to<gint32> (strings[n]);
         }
         return (V);
       }
@@ -271,19 +272,19 @@ namespace MR {
 
 
 
-      std::vector<uint32_t> Element::get_uint () const
+      std::vector<guint32> Element::get_uint () const
       {
-        std::vector<uint32_t> V;
+        std::vector<guint32> V;
         if (VR == VR_UL) 
-          for (const uint8_t* p = data; p < data + size; p += sizeof (uint32_t))
-            V.push_back (get<uint32_t> (p, is_BE));
+          for (const guint8* p = data; p < data + size; p += sizeof (guint32))
+            V.push_back (get<guint32> (p, is_BE));
         else if (VR == VR_US)
-          for (const uint8_t* p = data; p < data + size; p += sizeof (uint16_t)) 
-            V.push_back (get<uint16_t> (p, is_BE));
+          for (const guint8* p = data; p < data + size; p += sizeof (guint16)) 
+            V.push_back (get<guint16> (p, is_BE));
         else if (VR == VR_IS) {
-          std::vector<std::string> strings (split (std::string ((const char*) data, size), "\\", false));
+          std::vector<String> strings (split (String ((const gchar*) data, size), "\\", false));
           V.resize (strings.size());
-          for (uint n = 0; n < V.size(); n++) V[n] = to<uint32_t> (strings[n]);
+          for (guint n = 0; n < V.size(); n++) V[n] = to<guint32> (strings[n]);
         }
         return (V);
       }
@@ -294,15 +295,15 @@ namespace MR {
       {
         std::vector<double> V;
         if (VR == VR_FD) 
-          for (const uint8_t* p = data; p < data + size; p += sizeof (float64))
+          for (const guint8* p = data; p < data + size; p += sizeof (float64))
             V.push_back (get<float64> (p, is_BE));
         else if (VR == VR_FL)
-          for (const uint8_t* p = data; p < data + size; p += sizeof (float32)) 
+          for (const guint8* p = data; p < data + size; p += sizeof (float32)) 
             V.push_back (get<float32> (p, is_BE));
         else if (VR == VR_DS) {
-          std::vector<std::string> strings (split (std::string ((const char*) data, size), "\\", false));
+          std::vector<String> strings (split (String ((const gchar*) data, size), "\\", false));
           V.resize (strings.size());
-          for (uint n = 0; n < V.size(); n++) V[n] = to<double> (strings[n]);
+          for (guint n = 0; n < V.size(); n++) V[n] = to<double> (strings[n]);
         }
         return (V);
       }
@@ -311,10 +312,10 @@ namespace MR {
 
       
 
-      std::vector<std::string> Element::get_string () const
+      std::vector<String> Element::get_string () const
       { 
-        std::vector<std::string> strings (split (std::string ((const char*) data, size), "\\", false)); 
-        for (std::vector<std::string>::iterator i = strings.begin(); i != strings.end(); ++i) {
+        std::vector<String> strings (split (String ((const gchar*) data, size), "\\", false)); 
+        for (std::vector<String>::iterator i = strings.begin(); i != strings.end(); ++i) {
           *i = strip (*i);
           replace (*i, '^', ' ');
         }
@@ -325,7 +326,7 @@ namespace MR {
 
       namespace {
         template <class T> inline void print_vec (const std::vector<T>& V)
-        { for (uint n = 0; n < V.size(); n++) fprintf (stdout, "%s ", str (V[n]).c_str()); }
+        { for (guint n = 0; n < V.size(); n++) fprintf (stdout, "%s ", str (V[n]).c_str()); }
       }
 
 
@@ -335,7 +336,7 @@ namespace MR {
 
       void Element::print() const
       {
-        std::string name = tag_name();
+        String name = tag_name();
         fprintf (stdout, "  [DCM] %*s : ", int(2*end_seq.size()), ( name.size() ? name.substr(2).c_str() : "unknown" ));
         switch (type()) {
           case INT: print_vec (get_int()); break;
@@ -360,12 +361,12 @@ namespace MR {
 
       std::ostream& operator<< (std::ostream& stream, const Element& item)
       {
-        const std::string& name (item.tag_name());
+        const String& name (item.tag_name());
 
         stream << "[DCM] ";
-        for (uint i = 0; i < item.end_seq.size(); i++) stream << "  ";
+        for (guint i = 0; i < item.end_seq.size(); i++) stream << "  ";
         stream << printf ("%02X %02X ", item.group, item.element)  
-            + ((const char*) &item.VR)[1] + ((const char*) &item.VR)[0] + " " 
+            + ((const gchar*) &item.VR)[1] + ((const gchar*) &item.VR)[0] + " " 
             + str ( item.size == LENGTH_UNDEFINED ? 0 : item.size ) + " " 
             + str (item.offset (item.start)) + " " + ( name.size() ? name.substr (2) : "unknown" ) + " : ";
 
@@ -388,7 +389,7 @@ namespace MR {
 
         if (item.item_number.size()) {
           stream << " [ ";
-          for (uint n = 0; n < item.item_number.size(); n++) stream << item.item_number[n] << " ";
+          for (guint n = 0; n < item.item_number.size(); n++) stream << item.item_number[n] << " ";
           stream << "] ";
         }
 

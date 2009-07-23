@@ -21,10 +21,8 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "math/matrix.h"
-#include "math/eigen.h"
+#include "image/position.h"
+#include "math/linalg.h"
 #include "dwi/tensor.h"
 
 using namespace std; 
@@ -42,7 +40,6 @@ ARGUMENTS = {
   Argument::End
 };
 
-const char* modulate_choices[] = { "NONE", "FA", "EVAL", NULL };
 
 OPTIONS = { 
   Option ("adc", "mean ADC", "compute the mean apparent diffusion coefficient (ADC) of the diffusion tensor.")
@@ -63,21 +60,18 @@ OPTIONS = {
   Option ("mask", "brain mask", "only perform computation within the specified binary brain mask image.")
     .append (Argument ("image", "image", "the mask image to use.").type_image_in ()),
 
-  Option ("modulate", "modulate vector", "specify how to modulate the magnitude of the eigenvectors. Valid choices are: none, FA, eval (default = FA).")
-    .append (Argument ("spec", "specifier", "the modulation specifier.").type_choice (modulate_choices)),
-
   Option::End 
 };
 
 
 EXECUTE {
-  Image::Voxel dt (*argument[0].get_image());
+  Image::Position dt (*argument[0].get_image());
   Image::Header header (dt.image);
 
-  if (header.axes.size() != 4) 
+  if (header.ndim() != 4) 
     throw Exception ("base image should contain 4 dimensions");
 
-  if (header.axes[3].dim != 6) 
+  if (header.dim(3) != 6) 
     throw Exception ("expecting dimension 3 of image \"" + header.name + "\" to be 6");
 
   header.data_type = DataType::Float32;
@@ -93,37 +87,34 @@ EXECUTE {
       if (vals[i] < 1 || vals[i] > 3) throw Exception ("eigenvalue/eigenvector number is out of bounds");
   }
 
-  RefPtr<Image::Voxel> adc, fa, eval, evec, mask;
+  RefPtr<Image::Position> adc, fa, eval, evec, mask;
 
   opt = get_options (3); // vector
   if (opt.size()) {
-    header.axes[3].dim = 3*vals.size();
-    evec = new Image::Voxel (*opt[0][0].get_image (header));
+    header.axes.dim[3] = 3*vals.size();
+    evec = new Image::Position (*opt[0][0].get_image (header));
   }
 
   opt = get_options (4); // value
   if (opt.size()) {
-    header.axes[3].dim = vals.size();
-    eval = new Image::Voxel (*opt[0][0].get_image (header));
+    header.axes.dim[3] = vals.size();
+    eval = new Image::Position (*opt[0][0].get_image (header));
   }
 
-  header.axes.resize (3);
+  header.axes.set_ndim (3);
   opt = get_options (0); // adc
-  if (opt.size()) adc = new Image::Voxel (*opt[0][0].get_image (header));
+  if (opt.size()) adc = new Image::Position (*opt[0][0].get_image (header));
 
   opt = get_options (1); // FA
-  if (opt.size()) fa = new Image::Voxel (*opt[0][0].get_image (header));
+  if (opt.size()) fa = new Image::Position (*opt[0][0].get_image (header));
 
   opt = get_options (5); // mask
   if (opt.size()) {
-    mask = new Image::Voxel (*opt[0][0].get_image ());
+    mask = new Image::Position (*opt[0][0].get_image ());
     if (mask->dim(0) != dt.dim(0) || mask->dim(1) != dt.dim(1) || mask->dim(2) != dt.dim(2)) 
       throw Exception ("dimensions of mask image do not match that of tensor image - aborting");
   }
 
-  int modulate = 1;
-  opt = get_options (6); // modulate
-  if (opt.size()) modulate = opt[0][0].get_int();
 
   if ( ! (adc || fa || eval || evec))
     throw Exception ("no output metric specified - aborting");
@@ -133,42 +124,38 @@ EXECUTE {
     vals[i] = 3-vals[i];
  
 
-  Math::Matrix<double> V(3,3), M(3,3);
-  Math::Vector<double> ev(3);
-  float el[6], faval = NAN;
+  Math::Matrix V(3,3), M(3,3);
+  double ev[3];
+  float el[6];
 
-  Ptr<Math::Eigen::Symm<double> > eig;
-  Ptr<Math::Eigen::SymmV<double> > eigv;
-  if (evec) eigv = new Math::Eigen::SymmV<double> (3);
-  else eig = new Math::Eigen::Symm<double> (3);
+  Math::eig_init (M, evec);
 
   ProgressBar::init (dt.dim(0)*dt.dim(1)*dt.dim(2), "computing tensor metrics...");
 
-  for (dt[2] = 0; dt[2] < dt.dim(2); dt[2]++) {
-    if (mask) (*mask)[1] = 0; 
-    if (fa) (*fa)[1] = 0; 
-    if (adc) (*adc)[1] = 0; 
-    if (eval) (*eval)[1] = 0; 
-    if (evec) (*evec)[1] = 0;
-    for (dt[1] = 0; dt[1] < dt.dim(1); dt[1]++) {
-      if (mask) (*mask)[0] = 0; 
-      if (fa) (*fa)[0] = 0; 
-      if (adc) (*adc)[0] = 0; 
-      if (eval) (*eval)[0] = 0; 
-      if (evec) (*evec)[0] = 0;
-      for (dt[0] = 0; dt[0] < dt.dim(0); dt[0]++) {
+  for (dt.set(2,0); dt[2] < dt.dim(2); dt.inc(2)) {
+    if (mask) mask->set(1,0); 
+    if (fa) fa->set(1,0); 
+    if (adc) adc->set(1,0); 
+    if (eval) eval->set(1,0); 
+    if (evec) evec->set(1,0);
+    for (dt.set(1,0); dt[1] < dt.dim(1); dt.inc(1)) {
+      if (mask) mask->set(0,0); 
+      if (fa) fa->set(0,0); 
+      if (adc) adc->set(0,0); 
+      if (eval) eval->set(0,0); 
+      if (evec) evec->set(0,0);
+      for (dt.set(0,0); dt[0] < dt.dim(0); dt.inc(0)) {
 
         bool skip = false;
         if (mask) if (mask->value() < 0.5) skip = true;
 
         if (!skip) {
 
-          for (dt[3] = 0; dt[3] < dt.dim(3); dt[3]++) 
+          for (dt.set(3,0); dt[3] < dt.dim(3); dt.inc(3)) 
             el[dt[3]] = dt.value();
 
-          if (adc) adc->value() = DWI::tensor2ADC (el);
-          if (fa || modulate == 1) faval = DWI::tensor2FA (el);
-          if (fa) fa->value() = faval;
+          if (adc) adc->value (DWI::tensor2ADC (el));
+          if (fa) fa->value (DWI::tensor2FA (el));
 
           if (eval || evec) {
             M(0,0) = el[0];
@@ -179,50 +166,45 @@ EXECUTE {
             M(1,2) = M(2,1) = el[5];
 
             if (evec) {
-              (*eigv) (ev, M, V);
-              Math::Eigen::sort (ev, V);
-              if (modulate == 0) faval = 1.0;
-              (*evec)[3] = 0;
+              Math::eig (M, ev, V);
+              evec->set(3,0);
               for (size_t i = 0; i < vals.size(); i++) {
-                if (modulate == 2) faval = ev[vals[i]];
-                evec->value() = faval*V(0,vals[i]); (*evec)[3]++;
-                evec->value() = faval*V(1,vals[i]); (*evec)[3]++;
-                evec->value() = faval*V(2,vals[i]); (*evec)[3]++;
+                evec->value (V(0,vals[i])); evec->inc(3);
+                evec->value (V(1,vals[i])); evec->inc(3);
+                evec->value (V(2,vals[i])); evec->inc(3);
               }
             }
-            else {
-              (*eig) (ev, M);
-              Math::Eigen::sort (ev);
-            }
+            else Math::eig (M, ev);
 
             if (eval) {
-              for ((*eval)[3] = 0; (*eval)[3] < (int) vals.size(); (*eval)[3]++)
-                eval->value() = ev[vals[(*eval)[3]]]; 
+              for (eval->set(3,0); (*eval)[3] < (int) vals.size(); eval->inc(3))
+                eval->value (ev[vals[(*eval)[3]]]); 
             }
           }
         }
 
         ProgressBar::inc();
 
-        if (mask) (*mask)[0]++;
-        if (fa) (*fa)[0]++;
-        if (adc) (*adc)[0]++;
-        if (eval) (*eval)[0]++;
-        if (evec) (*evec)[0]++;
+        if (mask) mask->inc(0);
+        if (fa) fa->inc(0);
+        if (adc) adc->inc(0);
+        if (eval) eval->inc(0);
+        if (evec) evec->inc(0);
       }
-      if (mask) (*mask)[1]++;
-      if (fa) (*fa)[1]++;
-      if (adc) (*adc)[1]++;
-      if (eval) (*eval)[1]++;
-      if (evec) (*evec)[1]++;
+      if (mask) mask->inc(1);
+      if (fa) fa->inc(1);
+      if (adc) adc->inc(1);
+      if (eval) eval->inc(1);
+      if (evec) evec->inc(1);
     }
-    if (mask) (*mask)[2]++;
-    if (fa) (*fa)[2]++;
-    if (adc) (*adc)[2]++;
-    if (eval) (*eval)[2]++;
-    if (evec) (*evec)[2]++;
+    if (mask) mask->inc(2);
+    if (fa) fa->inc(2);
+    if (adc) adc->inc(2);
+    if (eval) eval->inc(2);
+    if (evec) evec->inc(2);
   }
 
   ProgressBar::done();
+  Math::eig_end();
 }
 

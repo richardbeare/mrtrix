@@ -33,14 +33,14 @@ namespace MR {
     namespace Dicom {
 
       RefPtr<Study> Patient::find (
-          const std::string& study_name, 
-          const std::string& study_ID, 
-          const std::string& study_date, 
-          const std::string& study_time)
+          const String& study_name, 
+          const String& study_ID, 
+          const String& study_date, 
+          const String& study_time)
       {
         bool match;
 
-        for (uint n = 0; n < size(); n++) {
+        for (guint n = 0; n < size(); n++) {
           match = true;
           if (study_name == (*this)[n]->name) {
             if (study_ID.size() && (*this)[n]->ID.size()) 
@@ -73,7 +73,7 @@ namespace MR {
             format_ID (item.ID).c_str(), 
             format_date (item.DOB).c_str());
 
-        for (uint n = 0; n < item.size(); n++) stream << (*item[n]);
+        for (guint n = 0; n < item.size(); n++) stream << (*item[n]);
         return (stream);
       }
 

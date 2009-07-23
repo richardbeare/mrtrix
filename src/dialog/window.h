@@ -56,7 +56,7 @@ namespace MR {
         Gtk::Frame              inner_text_frame, text_frame;
         Gtk::ComboBoxText       message_level, option_combobox;
 
-        static const char* message_level_options[3];
+        static const gchar* message_level_options[3];
 
         void                    on_close_button ();
         void                    on_stop_button ();

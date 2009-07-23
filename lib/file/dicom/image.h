@@ -44,21 +44,21 @@ namespace MR {
         public:
           Image (Series* parent = NULL);
 
-          std::string            filename;
-          std::string            sequence_name;
+          String            filename;
+          String            sequence_name;
           Series*           series;
 
-          uint             acq_dim[2], dim[2], instance, acq, sequence;
-          float            position_vector[3], orientation_x[3], orientation_y[3], orientation_z[3], distance;
-          float            pixel_size[2], slice_thickness, scale_slope, scale_intercept;
-          float            bvalue, G[3];
-          uint             data, bits_alloc, images_in_mosaic, data_size;
+          guint             acq_dim[2], dim[2], instance, acq, sequence;
+          gfloat            position_vector[3], orientation_x[3], orientation_y[3], orientation_z[3], distance;
+          gfloat            pixel_size[2], slice_thickness, scale_slope, scale_intercept;
+          gfloat            bvalue, G[3];
+          guint             data, bits_alloc, images_in_mosaic, data_size;
           DataType          data_type;
           bool              is_BE;
 
           void              read ();
-          void              parse_item (Element& item, const std::string& dirname = "");
-          void              decode_csa (const uint8_t* start, const uint8_t* end);
+          void              parse_item (Element& item, const String& dirname = "");
+          void              decode_csa (const guint8* start, const guint8* end);
 
           void              calc_distance ();
 
@@ -86,15 +86,15 @@ namespace MR {
         series (parent)
       { 
         acq_dim[0] = acq_dim[1] = dim[0] = dim[1] = instance = acq = sequence = UINT_MAX;
-        position_vector[0] = position_vector[1] = position_vector[2] = NAN;
-        orientation_x[0] = orientation_x[1] = orientation_x[2] = NAN;
-        orientation_y[0] = orientation_y[1] = orientation_y[2] = NAN;
-        orientation_z[0] = orientation_z[1] = orientation_z[2] = NAN;
-        distance = NAN;
-        pixel_size[0] = pixel_size[0] = slice_thickness = NAN; 
+        position_vector[0] = position_vector[1] = position_vector[2] = GSL_NAN;
+        orientation_x[0] = orientation_x[1] = orientation_x[2] = GSL_NAN;
+        orientation_y[0] = orientation_y[1] = orientation_y[2] = GSL_NAN;
+        orientation_z[0] = orientation_z[1] = orientation_z[2] = GSL_NAN;
+        distance = GSL_NAN;
+        pixel_size[0] = pixel_size[0] = slice_thickness = GSL_NAN; 
         scale_intercept = 0.0;
         scale_slope = 1.0;
-        bvalue = G[0] = G[1] = G[2] = NAN;
+        bvalue = G[0] = G[1] = G[2] = GSL_NAN;
         data = bits_alloc = images_in_mosaic = data_size = 0;
         is_BE = false;
       }
@@ -108,14 +108,14 @@ namespace MR {
       inline void Image::calc_distance ()
       {
         if (images_in_mosaic) {
-          float xinc = pixel_size[0] * (dim[0] - acq_dim[0]) / 2.0;
-          float yinc = pixel_size[1] * (dim[1] - acq_dim[1]) / 2.0;
-          for (uint i = 0; i < 3; i++) 
+          gfloat xinc = pixel_size[0] * (dim[0] - acq_dim[0]) / 2.0;
+          gfloat yinc = pixel_size[1] * (dim[1] - acq_dim[1]) / 2.0;
+          for (guint i = 0; i < 3; i++) 
             position_vector[i] += xinc * orientation_x[i] + yinc * orientation_y[i];
 
           float normal[3];
-          Math::cross (normal, orientation_x, orientation_y);
-          if (Math::dot (normal, orientation_z) < 0.0) {
+          Math::cross_product (normal, orientation_x, orientation_y);
+          if (Math::dot_product (normal, orientation_z) < 0.0) {
             orientation_z[0] = -normal[0];
             orientation_z[1] = -normal[1];
             orientation_z[2] = -normal[2];
@@ -127,10 +127,10 @@ namespace MR {
           }
 
         }
-        else Math::cross (orientation_z, orientation_x, orientation_y);
+        else Math::cross_product (orientation_z, orientation_x, orientation_y);
 
         Math::normalise (orientation_z);
-        distance = Math::dot (orientation_z, position_vector);
+        distance = Math::dot_product (orientation_z, position_vector);
       }
 
 

@@ -60,8 +60,8 @@ namespace MR {
         lod_adjustment (5, 2, 7, 1, 1),
         lmax (lmax_adjustment),
         lod (lod_adjustment),
-        azimuth (NAN),
-        elevation (NAN)
+        azimuth (GSL_NAN),
+        elevation (GSL_NAN)
       { 
         
         frame.add (render);
@@ -124,7 +124,7 @@ namespace MR {
         show_overlay.set_active (false);
         lod.set_value (5);
 
-        std::string string;
+        String string;
         string = File::Config::get ("OrientationPlot.Color");
         if (string.size()) { 
           try {

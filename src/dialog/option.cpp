@@ -28,7 +28,7 @@ namespace MR {
   namespace Dialog {
 
 
-    Option::Option (Window& parent, const MR::Option& option, uint index) :
+    Option::Option (Window& parent, const MR::Option& option, guint index) :
       opt (option),
       window (parent),
       description_label (option.lname),
@@ -44,7 +44,7 @@ namespace MR {
 
       remove_button.signal_clicked().connect (sigc::mem_fun(*this, &Option::on_remove_button));
 
-      for (uint n = 0; n < opt.size(); n++) {
+      for (guint n = 0; n < opt.size(); n++) {
         Argument* argument = manage (new Argument (opt[n]));
         pack_start (*argument, Gtk::PACK_SHRINK);
       }
@@ -60,7 +60,7 @@ namespace MR {
     OptBase Option::get () const 
     {
       OptBase ret;
-      ret.index = UINT_MAX;
+      ret.index = G_MAXUINT;
 /*
       wxSizerItemList list = main_sizer->GetChildren();
       for (uint n = 2; n < list.GetCount(); n++) {

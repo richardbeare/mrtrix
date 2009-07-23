@@ -24,11 +24,10 @@
 
 */
 
+#include <glibmm/stringutils.h>
 
 #include "file/config.h"
-#include "file/path.h"
 #include "image/mapper.h"
-#include "image/misc.h"
 #include "file/mmap.h"
 #include "image/format/list.h"
 #include "image/header.h"
@@ -37,11 +36,11 @@
 /*
  MRI format:
      Magic number:              MRI#         (4 bytes)
-     Byte order specifier:    uint16_t = 1     (2 bytes)
+     Byte order specifier:    guint16 = 1     (2 bytes)
      ...
      Elements:
-       ID specifier:            uint32_t       (4 bytes)
-       size:                    uint32_t       (4 bytes)
+       ID specifier:            guint32       (4 bytes)
+       size:                    guint32       (4 bytes)
        contents:              unspecified  ('size' bytes)
      ...
 
@@ -61,9 +60,9 @@ namespace MR {
 
       namespace {
 
-        const char* FormatMRI = "MRTools (legacy format)";
+        const gchar* FormatMRI = "MRTools (legacy format)";
 
-        inline size_t char2order (char item, bool& forward)
+        inline guint char2order (gchar item, bool& forward)
         {
           switch (item) {
             case 'L': forward = true;  return (0);
@@ -79,7 +78,7 @@ namespace MR {
         }
 
 
-        inline char order2char (size_t axis, bool forward)
+        inline gchar order2char (guint axis, bool forward)
         {
           switch (axis) {
             case 0: if (forward) return ('L'); else return ('R');
@@ -91,23 +90,23 @@ namespace MR {
         }
 
 
-        inline uint type (const uint8_t* pos, bool is_BE) { return (get<uint32_t> (pos, is_BE)); }
-        inline size_t size (const uint8_t* pos, bool is_BE) { return (get<uint32_t> (pos + sizeof (uint32_t), is_BE)); }
-        inline uint8_t* data (uint8_t* pos)                 { return (pos + 2*sizeof (uint32_t)); }
-        inline const uint8_t* data (const uint8_t* pos)     { return (pos + 2*sizeof (uint32_t)); }
+        inline guint type (const guint8* pos, bool is_BE) { return (get<guint32> (pos, is_BE)); }
+        inline guint size (const guint8* pos, bool is_BE) { return (get<guint32> (pos + sizeof (guint32), is_BE)); }
+        inline guint8* data (guint8* pos)                 { return (pos + 2*sizeof (guint32)); }
+        inline const guint8* data (const guint8* pos)     { return (pos + 2*sizeof (guint32)); }
 
-        inline uint8_t* next (uint8_t* current_pos, bool is_BE) 
+        inline guint8* next (guint8* current_pos, bool is_BE) 
         {
-          return (current_pos + 2*sizeof (uint32_t) + size (current_pos, is_BE));
+          return (current_pos + 2*sizeof (guint32) + size (current_pos, is_BE));
         }
-        inline const uint8_t* next (const uint8_t* current_pos, bool is_BE) 
+        inline const guint8* next (const guint8* current_pos, bool is_BE) 
         {
-          return (current_pos + 2*sizeof (uint32_t) + size (current_pos, is_BE));
+          return (current_pos + 2*sizeof (guint32) + size (current_pos, is_BE));
         }
-        inline void write (uint8_t* pos, uint32_t Type, uint32_t Size, bool is_BE)
+        inline void write (guint8* pos, guint32 Type, guint32 Size, bool is_BE)
         {
-          put<uint32_t> (Type, pos, is_BE);
-          put<uint32_t> (Size, pos + sizeof (uint32_t), is_BE);
+          put<guint32> (Type, pos, is_BE);
+          put<guint32> (Size, pos + sizeof (guint32), is_BE);
         }
 
       }
@@ -121,74 +120,74 @@ namespace MR {
 
       bool MRI::read (Mapper& dmap, Header& H) const
       {
-        if (!Path::has_suffix (H.name, ".mri")) return (false);
+        if (!Glib::str_has_suffix (H.name, ".mri")) return (false);
 
         H.format = FormatMRI;
 
         File::MMap fmap (H.name);
         fmap.map();
 
-        if (memcmp ((uint8_t*) fmap.address(), "MRI#", 4)) 
+        if (memcmp ((guint8*) fmap.address(), "MRI#", 4)) 
           throw Exception ("file \"" + H.name + "\" is not in MRI format (unrecognised magic number)");
 
         bool is_BE = false;
-        if (get<uint16_t> ((uint8_t*) fmap.address() + sizeof (int32_t), is_BE) == 0x0100U) is_BE = true;
-        else if (get<uint16_t> ((uint8_t*) fmap.address() + sizeof (uint32_t), is_BE) != 0x0001U) 
+        if (get<guint16> ((guint8*) fmap.address() + sizeof (gint32), is_BE) == 0x0100U) is_BE = true;
+        else if (get<guint16> ((guint8*) fmap.address() + sizeof (guint32), is_BE) != 0x0001U) 
           throw Exception ("MRI file \"" + H.name + "\" is badly formed (invalid byte order specifier)");
 
-        H.axes.resize (4);
+        H.axes.set_ndim (4);
 
-        size_t data_offset = 0;
-        char* c;
-        Math::Matrix<float> M (4,4);
-        const uint8_t* current = (uint8_t*) fmap.address() + sizeof (int32_t) + sizeof (uint16_t);
-        const uint8_t* last = (uint8_t*) fmap.address() + fmap.size() - 2*sizeof (uint32_t);
+        guint data_offset = 0;
+        gchar* c;
+        Math::Matrix M (4,4);
+        const guint8* current = (guint8*) fmap.address() + sizeof (gint32) + sizeof (guint16);
+        const guint8* last = (guint8*) fmap.address() + fmap.size() - 2*sizeof (guint32);
 
         while (current <= last) {
           switch (type (current, is_BE)) {
             case MRI_DATA:
-              H.data_type = (((const char*) data (current)) - 4)[0];
-              data_offset = current + 5 - (uint8_t*) fmap.address();
+              H.data_type = (((const gchar*) data (current)) - 4)[0];
+              data_offset = current + 5 - (guint8*) fmap.address();
               fmap.unmap();
               break;
             case MRI_DIMENSIONS:
-              H.axes[0].dim = get<uint32_t> (data (current), is_BE);
-              H.axes[1].dim = get<uint32_t> (data (current) + sizeof (uint32_t), is_BE);
-              H.axes[2].dim = get<uint32_t> (data (current) + 2*sizeof (uint32_t), is_BE);
-              H.axes[3].dim = get<uint32_t> (data (current) + 3*sizeof (uint32_t), is_BE);
+              H.axes.dim[0] = get<guint32> (data (current), is_BE);
+              H.axes.dim[1] = get<guint32> (data (current) + sizeof (guint32), is_BE);
+              H.axes.dim[2] = get<guint32> (data (current) + 2*sizeof (guint32), is_BE);
+              H.axes.dim[3] = get<guint32> (data (current) + 3*sizeof (guint32), is_BE);
               break;
             case MRI_ORDER:
-              c = (char*) data (current);
-              for (size_t n = 0; n < 4; n++) {
+              c = (gchar*) data (current);
+              for (guint n = 0; n < 4; n++) {
                 bool forward = true;
-                uint ax = char2order (c[n], forward);
-                H.axes[ax].order = n;
-                H.axes[ax].forward = forward;
+                guint ax = char2order (c[n], forward);
+                H.axes.axis[ax] = n;
+                H.axes.forward[ax] = forward;
               }
               break;
             case MRI_VOXELSIZE:
-              H.axes[0].vox = get<float32> (data (current), is_BE);
-              H.axes[1].vox = get<float32> (data (current) + sizeof (float32), is_BE);
-              H.axes[2].vox = get<float32> (data (current) + 2*sizeof (float32), is_BE);
+              H.axes.vox[0] = get<float32> (data (current), is_BE);
+              H.axes.vox[1] = get<float32> (data (current) + sizeof (float32), is_BE);
+              H.axes.vox[2] = get<float32> (data (current) + 2*sizeof (float32), is_BE);
               break;
             case MRI_COMMENT:
-              H.comments.push_back (std::string ((const char*) data (current), size (current, is_BE)));
+              H.comments.push_back (String ((const gchar*) data (current), size (current, is_BE)));
               break;
             case MRI_TRANSFORM:
-              for (size_t i = 0; i < 4; i++)
-                for (size_t j = 0; j < 4; j++)
+              for (guint i = 0; i < 4; i++)
+                for (guint j = 0; j < 4; j++)
                   M(i,j) = get<float32> (data (current) + ( i*4 + j )*sizeof (float32), is_BE);
-              H.transform_matrix = M;
+              H.set_transform (M);
               break;
             case MRI_DWSCHEME:
               H.DW_scheme.allocate (size (current, is_BE)/(4*sizeof (float32)), 4);
-              for (size_t i = 0; i < H.DW_scheme.rows(); i++)
-                for (size_t j = 0; j < 4; j++)
+              for (guint i = 0; i < H.DW_scheme.rows(); i++)
+                for (guint j = 0; j < 4; j++)
                   H.DW_scheme(i,j) = get<float32> (data (current) + ( i*4 + j )*sizeof (float32), is_BE);
               break;
             default:
               error ("unknown header entity (" + str (type (current, is_BE)) 
-                  + ", offset " + str (current - (uint8_t*) fmap.address()) 
+                  + ", offset " + str (current - (guint8*) fmap.address()) 
                   + ") in image \"" + H.name + "\" - ignored");
               break;
           }
@@ -200,14 +199,14 @@ namespace MR {
         if (!data_offset) throw Exception ("no data field found in MRI image \"" + H.name + "\"");
 
 
-        if (!H.axes[0].desc.size()) H.axes[0].desc = Axis::left_to_right;
-        if (!H.axes[0].units.size()) H.axes[0].units = Axis::millimeters;
-        if (H.axes.size() > 1) {
-          if (!H.axes[1].desc.size()) H.axes[1].desc = Axis::posterior_to_anterior;
-          if (!H.axes[1].units.size()) H.axes[1].units = Axis::millimeters;
-          if (H.axes.size() > 2) {
-            if (!H.axes[2].desc.size()) H.axes[2].desc = Axis::inferior_to_superior;
-            if (!H.axes[2].units.size()) H.axes[2].units = Axis::millimeters;
+        if (!H.axes.desc[0].size()) H.axes.desc[0] = Axis::left_to_right;
+        if (!H.axes.units[0].size()) H.axes.units[0] = Axis::millimeters;
+        if (H.axes.ndim() > 1) {
+          if (!H.axes.desc[1].size()) H.axes.desc[1] = Axis::posterior_to_anterior;
+          if (!H.axes.units[1].size()) H.axes.units[1] = Axis::millimeters;
+          if (H.axes.ndim() > 2) {
+            if (!H.axes.desc[2].size()) H.axes.desc[2] = Axis::inferior_to_superior;
+            if (!H.axes.units[2].size()) H.axes.units[2] = Axis::millimeters;
           }
         }
 
@@ -222,21 +221,21 @@ namespace MR {
 
       bool MRI::check (Header& H, int num_axes) const
       {
-        if (!Path::has_suffix (H.name, ".mri")) return (false);
+        if (!Glib::str_has_suffix (H.name, ".mri")) return (false);
         if ((int) H.axes.ndim() > num_axes && num_axes != 4) throw Exception ("MRTools format can only support 4 dimensions");
 
         H.format = FormatMRI;
 
-        H.axes.resize (num_axes);
+        H.axes.set_ndim (num_axes);
 
-        if (H.axes[0].desc.empty()) H.axes[0].desc= Axis::left_to_right;
-        if (H.axes[0].units.empty()) H.axes[0].units = Axis::millimeters;
-        if (H.axes.size() > 1) {
-          if (H.axes[1].desc.empty()) H.axes[1].desc = Axis::posterior_to_anterior;
-          if (H.axes[1].units.empty()) H.axes[1].units = Axis::millimeters;
-          if (H.axes.size() > 2) {
-            if (H.axes[2].desc.empty()) H.axes[2].desc = Axis::inferior_to_superior;
-            if (H.axes[2].units.empty()) H.axes[2].units = Axis::millimeters;
+        if (H.axes.desc[0].empty()) H.axes.desc[0]= Axis::left_to_right;
+        if (H.axes.units[0].empty()) H.axes.units[0] = Axis::millimeters;
+        if (H.axes.ndim() > 1) {
+          if (H.axes.desc[1].empty()) H.axes.desc[1] = Axis::posterior_to_anterior;
+          if (H.axes.units[1].empty()) H.axes.units[1] = Axis::millimeters;
+          if (H.axes.ndim() > 2) {
+            if (H.axes.desc[2].empty()) H.axes.desc[2] = Axis::inferior_to_superior;
+            if (H.axes.units[2].empty()) H.axes.units[2] = Axis::millimeters;
           }
         }
 
@@ -254,38 +253,38 @@ namespace MR {
         File::MMap fmap (H.name, 65536, "mri");
         fmap.map();
 
-#ifdef BYTE_ORDER_BIG_ENDIAN
+#if G_BYTE_ORDER == G_BIG_ENDIAN
         bool is_BE = true;
 #else
         bool is_BE = false;
 #endif
 
-        memcpy ((uint8_t*) fmap.address(), "MRI#", 4);
-        put<uint16_t> (0x01U, (uint8_t*) fmap.address() + sizeof (uint32_t), is_BE);
+        memcpy ((guint8*) fmap.address(), "MRI#", 4);
+        put<guint16> (0x01U, (guint8*) fmap.address() + sizeof (guint32), is_BE);
 
-        uint8_t* current = (uint8_t*) fmap.address() + sizeof (uint32_t) + sizeof (uint16_t);
+        guint8* current = (guint8*) fmap.address() + sizeof (guint32) + sizeof (guint16);
 
-        write (current, MRI_DIMENSIONS, 4*sizeof (uint32_t), is_BE);
-        put<uint32_t> (H.axes[0].dim, data (current), is_BE);
-        put<uint32_t> (( H.axes.size() > 1 ? H.axes[1].dim : 1 ), data (current) + sizeof (uint32_t), is_BE);
-        put<uint32_t> (( H.axes.size() > 2 ? H.axes[2].dim : 1 ), data (current) + 2*sizeof (uint32_t), is_BE);
-        put<uint32_t> (( H.axes.size() > 3 ? H.axes[3].dim : 1 ), data (current) + 3*sizeof (uint32_t), is_BE);
+        write (current, MRI_DIMENSIONS, 4*sizeof (guint32), is_BE);
+        put<guint32> (H.axes.dim[0], data (current), is_BE);
+        put<guint32> (( H.axes.ndim() > 1 ? H.axes.dim[1] : 1 ), data (current) + sizeof (guint32), is_BE);
+        put<guint32> (( H.axes.ndim() > 2 ? H.axes.dim[2] : 1 ), data (current) + 2*sizeof (guint32), is_BE);
+        put<guint32> (( H.axes.ndim() > 3 ? H.axes.dim[3] : 1 ), data (current) + 3*sizeof (guint32), is_BE);
 
         current = next (current, is_BE);
-        write (current, MRI_ORDER, 4*sizeof (uint8_t), is_BE);
-        size_t n;
-        for (n = 0; n < H.axes.size(); n++) 
-          ((char*) data (current))[H.axes[n].order] = order2char (n, H.axes[n].forward);
-        for (; n < 4; n++) ((char*) data (current))[n] = order2char (n, true);
+        write (current, MRI_ORDER, 4*sizeof (guchar), is_BE);
+        int n;
+        for (n = 0; n < H.axes.ndim(); n++) 
+          ((gchar*) data (current))[H.axes.axis[n]] = order2char (n, H.axes.forward[n]);
+        for (; n < 4; n++) ((gchar*) data (current))[n] = order2char (n, true);
 
         current = next (current, is_BE);
         write (current, MRI_VOXELSIZE, 3*sizeof (float32), is_BE);
-        put<float32> (H.axes[0].vox, data (current), is_BE);
-        put<float32> (( H.axes.size() > 1 ? H.axes[1].vox : 2.0 ), data (current)+sizeof (float32), is_BE);
-        put<float32> (( H.axes.size() > 2 ? H.axes[2].vox : 2.0 ), data (current)+2*sizeof (float32), is_BE);
+        put<float32> (H.axes.vox[0], data (current), is_BE);
+        put<float32> (( H.axes.ndim() > 1 ? H.axes.vox[1] : 2.0 ), data (current)+sizeof (float32), is_BE);
+        put<float32> (( H.axes.ndim() > 2 ? H.axes.vox[2] : 2.0 ), data (current)+2*sizeof (float32), is_BE);
 
-        for (size_t n = 0; n < H.comments.size(); n++) {
-          size_t l = H.comments[n].size();
+        for (guint n = 0; n < H.comments.size(); n++) {
+          guint l = H.comments[n].size();
           if (l) {
             current = next (current, is_BE);
             write (current, MRI_COMMENT, l, is_BE);
@@ -293,28 +292,28 @@ namespace MR {
           }
         }
 
-        if (H.transform_matrix.is_set()) {
+        if (H.transform().is_valid()) {
           current = next (current, is_BE);
           write (current, MRI_TRANSFORM, 16*sizeof (float32), is_BE);
-          for (size_t i = 0; i < 4; i++)
-            for (size_t j = 0; j < 4; j++)
-              put<float32> (H.transform_matrix(i,j), data (current) + ( i*4 + j )*sizeof (float32), is_BE);
+          for (guint i = 0; i < 4; i++)
+            for (guint j = 0; j < 4; j++)
+              put<float32> (H.transform()(i,j), data (current) + ( i*4 + j )*sizeof (float32), is_BE);
         }
 
-        if (H.DW_scheme.is_set()) {
+        if (H.DW_scheme.is_valid()) {
           current = next (current, is_BE);
           write (current, MRI_DWSCHEME, 4*H.DW_scheme.rows()*sizeof (float32), is_BE);
-          for (uint i = 0; i < H.DW_scheme.rows(); i++)
-            for (uint j = 0; j < 4; j++)
+          for (guint i = 0; i < H.DW_scheme.rows(); i++)
+            for (guint j = 0; j < 4; j++)
               put<float32> (H.DW_scheme(i,j), data (current) + ( i*4 + j )*sizeof (float32), is_BE);
         }
 
         current = next (current, is_BE);
         write (current, MRI_DATA, 0, is_BE);
-        ((char*) current)[4] = H.data_type();
+        ((gchar*) current)[4] = H.data_type();
 
-        size_t data_offset = current + 5 - (uint8_t*) fmap.address();
-        fmap.resize (data_offset + memory_footprint(H.data_type, voxel_count (H.axes)));
+        guint data_offset = current + 5 - (guint8*) fmap.address();
+        fmap.resize (data_offset + H.memory_footprint());
         dmap.add (fmap, data_offset);
       }
 

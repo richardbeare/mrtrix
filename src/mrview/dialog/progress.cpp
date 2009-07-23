@@ -23,7 +23,6 @@
 #include <gtkmm/progressbar.h>
 #include <gtkmm/main.h>
 
-#include "progressbar.h"
 #include "mrview/dialog/progress.h"
 
 namespace MR {
@@ -42,7 +41,7 @@ namespace MR {
 
     void ProgressDialog::display ()
     {
-      if (isnan (ProgressBar::multiplier)) dialog->bar.pulse();
+      if (gsl_isnan (ProgressBar::multiplier)) dialog->bar.pulse();
       else dialog->bar.set_fraction (ProgressBar::percent/100.0);
       Gtk::Main::iteration (false);
     }

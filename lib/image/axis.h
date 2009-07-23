@@ -27,111 +27,124 @@
 #ifndef __image_axis_h__
 #define __image_axis_h__
 
-#include "types.h"
 #include "mrtrix.h"
 
 namespace MR {
   namespace Image {
 
+    class Axis {
+      public:
+        int   axis;
+        bool  forward;
+
+        static const gchar*  left_to_right;
+        static const gchar*  posterior_to_anterior;
+        static const gchar*  inferior_to_superior;
+        static const gchar*  time;
+        static const gchar*  real_imag;
+        static const gchar*  millimeters;
+        static const gchar*  milliseconds;
+
+        static const int     undefined = G_MAXINT;
+    };
+
     class Axes {
       public:
+        Axes () : size_p (0) { }
 
-        static const size_t  undefined = SIZE_MAX;
+        int             dim[MRTRIX_MAX_NDIMS];
+        float           vox[MRTRIX_MAX_NDIMS];
+        String          desc[MRTRIX_MAX_NDIMS];
+        String          units[MRTRIX_MAX_NDIMS];
+        int             axis[MRTRIX_MAX_NDIMS];
+        bool            forward[MRTRIX_MAX_NDIMS];
 
-        static const char*  left_to_right;
-        static const char*  posterior_to_anterior;
-        static const char*  inferior_to_superior;
-        static const char*  time;
-        static const char*  real_imag;
-        static const char*  millimeters;
-        static const char*  milliseconds;
+        int             ndim () const { return (size_p); }
+        void            set_ndim (int num);
+        int             direction (int index) const { return (forward[index] ? 1 : -1); }
+        void            sanitise ();
 
-        class Order {
-          public:
-            Order () : order (undefined), forward (true) { }
-            size_t order;
-            bool   forward;
-
-            ssize_t direction () const { return (forward ? 1 : -1); }
-
-        };
-
-        class Axis : public Order {
-          public:
-            Axis () : dim (1), vox (NAN), stride (0) { }
-
-            int    dim;
-            float  vox;
-            ssize_t stride;
-            std::string desc;
-            std::string units;
-        };
-
-        Axes () { }
-        Axes (size_t ndim) : axes (ndim) { set_default_axes (0); }
-
-        void clear () { axes.clear(); }
-        void resize (size_t number_of_dims) { size_t from = ndim(); axes.resize (number_of_dims); set_default_axes (from); }
-        void sanitise ();
-
-        const Axis& operator[] (size_t index) const { return (axes[index]); }
-
-        // DataSet interface:
-        size_t       ndim () const { return (axes.size()); }
-
-        int  dim (size_t index) const { return (axes[index].dim); }
-        int& dim (size_t index)       { return (axes[index].dim); }
-
-        float  vox (size_t index) const { return (axes[index].vox); }
-        float& vox (size_t index)       { return (axes[index].vox); }
-
-        ssize_t  stride (size_t index) const { return (axes[index].stride); }
-        ssize_t& stride (size_t index)       { return (axes[index].stride); }
-
-        const std::string& description (size_t index) const { return (axes[index].desc); }
-        std::string&       description (size_t index)       { return (axes[index].desc); }
-
-        const std::string& units (size_t index) const { return (axes[index].units); }
-        std::string&       units (size_t index)       { return (axes[index].units); }
-
-        size_t  order (size_t index) const { return (axes[index].order); }
-        size_t& order (size_t index)       { return (axes[index].order); }
-
-        bool  forward (size_t index) const { return (axes[index].forward); }
-        bool& forward (size_t index)       { return (axes[index].forward); }
-
-        ssize_t direction (size_t index) const { return (axes[index].direction()); }
+        void            copy (guint dest_axis, const Axes& src, guint src_axis);
 
       protected:
-        std::vector<Axis> axes;
+        int             size_p;
 
-        void set_default_axes (size_t from) { 
-          for (size_t n = from; n < ndim(); n++) {
-            Axis& a (axes[n]);
-            switch (n) {
-              case 0: a.desc = left_to_right; a.units = millimeters; break;
-              case 1: a.desc = posterior_to_anterior; a.units = millimeters; break;
-              case 2: a.desc = inferior_to_superior; a.units = millimeters; break;
-              default: a.desc.clear(); a.units.clear();
-            }
-          }
-        }
-
-        size_t find_free_axis () const {
-          for (size_t a = 0; a < ndim(); a++) {
-            size_t m = 0;
-            for (; m < ndim(); m++) if (axes[m].order == a) break; 
-            if (m >= ndim()) return (a);
-          }
-          return (undefined);
-        }
+        int             find_free_axis () const;
     };
 
     std::ostream& operator<< (std::ostream& stream, const Axes& axes);
-    std::vector<Axes::Order> parse_axes_specifier (const Axes& original, const std::string& specifier);
-    void check_axes_specifier (const std::vector<Axes::Order>& parsed, size_t ndim);
+    std::vector<Axis> parse_axes_specifier (const Axes& original, const String& specifier);
+    void check_axes_specifier (const std::vector<Axis>& parsed, int ndims);
 
 
+
+
+
+
+
+
+
+
+
+    inline void Axes::set_ndim (int new_size)
+    {
+      for (int n = GSL_MIN (size_p, new_size); n < MRTRIX_MAX_NDIMS; n++) {
+        dim[n] = 0;
+        vox[n] = GSL_NAN;
+        axis[n] = Axis::undefined;
+        forward[n] = true;
+        desc[n].clear();
+        units[n].clear();
+      }
+      size_p = new_size;
+    }
+
+
+
+    inline int Axes::find_free_axis () const
+    {
+      for (int a = 0; a < size_p; a++) {
+        int m = 0;
+        for (; m < size_p; m++) if (axis[m] == a) break; 
+        if (m >= size_p) return (a);
+      }
+      return (Axis::undefined);
+    }
+
+
+
+
+
+    inline void Axes::sanitise ()
+    {
+      int a;
+      for (a = 1; a < size_p; a++) {
+        for (int n = 0; n < a; n++) {
+          if (axis[a] == axis[n]) { 
+            axis[a] = find_free_axis();
+            break; 
+          }
+        }
+      }
+
+      while ((a = find_free_axis()) != Axis::undefined) 
+        for (int n = 0; n < size_p; n++) 
+          if (axis[n] > a) axis[n]--;
+    }
+
+
+
+
+
+    inline void Axes::copy (guint dest_axis, const Axes& src, guint src_axis)
+    {
+      dim[dest_axis] = src.dim[src_axis];
+      vox[dest_axis] = src.vox[src_axis];
+      desc[dest_axis] = src.desc[src_axis];
+      units[dest_axis] = src.units[src_axis];
+      axis[dest_axis] = src.axis[src_axis];
+      forward[dest_axis] = src.forward[src_axis];
+    }
 
   }
 }

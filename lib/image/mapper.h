@@ -27,45 +27,40 @@
 #include "file/mmap.h"
 #include "image/header.h"
 #include "image/format/base.h"
-#include "math/complex.h"
+#include "math/complex_number.h"
 
 namespace MR {
   namespace Dialog { class File; }
   namespace Image {
 
+    class Object;
     class Header;
 
     class Mapper {
       public:
-        void  reset ();
-        void  add (const std::string& filename, size_t offset = 0, size_t desired_size_if_inexistant = 0);
-        void  add (const File::MMap& fmap, size_t offset = 0);
-        void  add (uint8_t* memory_buffer) { assert (mem == NULL); assert (list.size() == 0); mem = memory_buffer; }
+        void                   reset ();
+        void                   add (const String& filename, gsize offset = 0, gsize desired_size_if_inexistant = 0);
+        void                   add (const File::MMap& fmap, gsize offset = 0);
+        void                   add (guint8* memory_buffer);
 
 
-        float32 real (size_t offset) const          { return (get_val<0> (offset)); }
-        void    real (float32 val, size_t offset)   { set_val<0> (val, offset); }
-        float32 imag (size_t offset) const          { return (get_val<1> (offset)); }
-        void    imag (float32 val, size_t offset)   { set_val<1> (val, offset); }
+        float32                re (gsize offset) const;
+        void                   re (float32 val, gsize offset);
+        float32                im (gsize offset) const;
+        void                   im (float32 val, gsize offset); 
 
-        void        set_temporary (bool temp) { temporary = temp; }
-        std::string output_name;
+        void                   set_temporary (bool temp);
+        String                 output_name;
 
       protected:
-        Mapper () : 
-          mem (NULL), segment (NULL), segsize (0), optimised (false),
-          temporary (false), files_new (true), get_func (NULL), put_func (NULL) { }
-
-        ~Mapper () { 
-          if (mem && list.size()) throw Exception ("Mapper destroyed before committing data to file!"); 
-          if (output_name.size()) std::cout << output_name << "\n";
-        }
+        Mapper ();
+        ~Mapper ();
 
         class Entry {
           public:
             File::MMap fmap;
-            size_t    offset;
-            uint8_t*    start () const { return ((uint8_t*) fmap.address() + offset); }
+            gsize    offset;
+            guint8*    start () const;
             friend std::ostream& operator<< (std::ostream& stream, const Entry& m)
             {
               stream << "Mapper::Entry: offset = " << m.offset << ", " << m.fmap;
@@ -74,89 +69,100 @@ namespace MR {
         };
 
         std::vector<Entry>    list;
-        uint8_t*              mem;
-        uint8_t**             segment;
-        size_t                segsize;
+        guint8*               mem;
+        guint8**              segment;
+        gsize                 segsize;
 
         bool                  optimised, temporary, files_new;
 
         void                  set_data_type (DataType dt);
+        void                  set_read_only (bool read_only);
 
-        //! make all files in the list read-only or read/write.
-        /** Makes all files currently in the list read-only or read/write.  */
-        void                  set_read_only (bool read_only) {
-          for (uint s = 0; s < list.size(); s++) {
-            list[s].fmap.set_read_only (read_only); 
-            if (segment) segment[s] = list[s].start();
-          }
-        }
+        Entry&                operator[] (guint index);
+        
+        float32                (*get_func) (const void* data, gsize i);
+        void                   (*put_func) (float32 val, void* data, gsize i);
 
-        const Entry&          operator[] (uint index) const { return (list[index]); }
-        Entry&                operator[] (uint index)       { return (list[index]); }
+        static float32         getBit       (const void* data, gsize i);
+        static float32         getInt8      (const void* data, gsize i);
+        static float32         getUInt8     (const void* data, gsize i);
+        static float32         getInt16LE   (const void* data, gsize i);
+        static float32         getUInt16LE  (const void* data, gsize i);
+        static float32         getInt16BE   (const void* data, gsize i);
+        static float32         getUInt16BE  (const void* data, gsize i);
+        static float32         getInt32LE   (const void* data, gsize i);
+        static float32         getUInt32LE  (const void* data, gsize i);
+        static float32         getInt32BE   (const void* data, gsize i);
+        static float32         getUInt32BE  (const void* data, gsize i);
+        static float32         getFloat32LE (const void* data, gsize i);
+        static float32         getFloat32BE (const void* data, gsize i);
+        static float32         getFloat64LE (const void* data, gsize i);
+        static float32         getFloat64BE (const void* data, gsize i);
 
-        float32               (*get_func) (const void* data, size_t i);
-        void                  (*put_func) (float32 val, void* data, size_t i);
-
-        static float32        getBit       (const void* data, size_t i);
-        static float32        getInt8      (const void* data, size_t i);
-        static float32        getUInt8     (const void* data, size_t i);
-        static float32        getInt16LE   (const void* data, size_t i);
-        static float32        getUInt16LE  (const void* data, size_t i);
-        static float32        getInt16BE   (const void* data, size_t i);
-        static float32        getUInt16BE  (const void* data, size_t i);
-        static float32        getInt32LE   (const void* data, size_t i);
-        static float32        getUInt32LE  (const void* data, size_t i);
-        static float32        getInt32BE   (const void* data, size_t i);
-        static float32        getUInt32BE  (const void* data, size_t i);
-        static float32        getFloat32LE (const void* data, size_t i);
-        static float32        getFloat32BE (const void* data, size_t i);
-        static float32        getFloat64LE (const void* data, size_t i);
-        static float32        getFloat64BE (const void* data, size_t i);
-
-        static void           putBit       (float32 val, void* data, size_t i);
-        static void           putInt8      (float32 val, void* data, size_t i);
-        static void           putUInt8     (float32 val, void* data, size_t i);
-        static void           putInt16LE   (float32 val, void* data, size_t i);
-        static void           putUInt16LE  (float32 val, void* data, size_t i);
-        static void           putInt16BE   (float32 val, void* data, size_t i);
-        static void           putUInt16BE  (float32 val, void* data, size_t i);
-        static void           putInt32LE   (float32 val, void* data, size_t i);
-        static void           putUInt32LE  (float32 val, void* data, size_t i);
-        static void           putInt32BE   (float32 val, void* data, size_t i);
-        static void           putUInt32BE  (float32 val, void* data, size_t i);
-        static void           putFloat32LE (float32 val, void* data, size_t i);
-        static void           putFloat32BE (float32 val, void* data, size_t i);
-        static void           putFloat64LE (float32 val, void* data, size_t i);
-        static void           putFloat64BE (float32 val, void* data, size_t i);
+        static void            putBit       (float32 val, void* data, gsize i);
+        static void            putInt8      (float32 val, void* data, gsize i);
+        static void            putUInt8     (float32 val, void* data, gsize i);
+        static void            putInt16LE   (float32 val, void* data, gsize i);
+        static void            putUInt16LE  (float32 val, void* data, gsize i);
+        static void            putInt16BE   (float32 val, void* data, gsize i);
+        static void            putUInt16BE  (float32 val, void* data, gsize i);
+        static void            putInt32LE   (float32 val, void* data, gsize i);
+        static void            putUInt32LE  (float32 val, void* data, gsize i);
+        static void            putInt32BE   (float32 val, void* data, gsize i);
+        static void            putUInt32BE  (float32 val, void* data, gsize i);
+        static void            putFloat32LE (float32 val, void* data, gsize i);
+        static void            putFloat32BE (float32 val, void* data, gsize i);
+        static void            putFloat64LE (float32 val, void* data, gsize i);
+        static void            putFloat64BE (float32 val, void* data, gsize i);
 
 
-        void                  map (const Header& H);
-        void                  unmap (const Header& H);
-        bool                  is_mapped () const { return (segment); }
+        void                   map (const Header& H);
+        void                   unmap (const Header& H);
+        bool                   is_mapped () const { return (segment); }
 
-      private:
-
-        template <off64_t inc> inline float32 get_val (off64_t offset) const {
-          if (optimised) return (((float32*) segment[0])[offset + inc]);
-          ssize_t nseg (offset/segsize);
-          return (get_func (segment[nseg], offset - nseg*segsize + inc)); 
-        }
-
-        template <off64_t inc> inline void set_val (float32 val, off64_t offset) {
-          if (optimised) ((float32*) segment[0])[offset+inc] = val;
-          ssize_t nseg (offset/segsize);
-          put_func (val, segment[nseg], offset - nseg*segsize + inc); 
-        }
 
         friend class Object;
         friend class Dialog::File;
-        friend class Voxel;
+        friend class Value;
         friend std::ostream& operator<< (std::ostream& stream, const Mapper& dmap);
     };
 
 
 
 
+
+
+
+
+
+
+
+
+
+    inline guint8* Mapper::Entry::start () const { return ((guint8*) fmap.address() + offset); }
+
+
+    inline Mapper::Mapper () :
+      mem (NULL),
+      segment (NULL),
+      segsize (0),
+      optimised (false),
+      temporary (false),
+      files_new (true),
+      get_func (NULL),
+      put_func (NULL)
+    { 
+    }
+
+
+
+
+
+    inline Mapper::~Mapper () 
+    { 
+      if (mem && list.size()) throw Exception ("Mapper destroyed before committing data to file!"); 
+      if (output_name.size()) std::cout << output_name << "\n";
+    }
 
 
 
@@ -177,7 +183,11 @@ namespace MR {
       segment = NULL;
     }
 
-    inline void Mapper::add (const std::string& filename, size_t offset, size_t desired_size_if_inexistant)
+
+
+
+
+    inline void Mapper::add (const String& filename, gsize offset, gsize desired_size_if_inexistant)
     {
       Entry entry;
       entry.fmap.init (filename, desired_size_if_inexistant, "tmp"); 
@@ -186,7 +196,12 @@ namespace MR {
       list.push_back (entry);
     }
 
-    inline void Mapper::add (const File::MMap& fmap, size_t offset)
+
+
+
+
+
+    inline void Mapper::add (const File::MMap& fmap, gsize offset)
     {
       assert (!fmap.is_mapped());
       Entry entry;
@@ -196,6 +211,89 @@ namespace MR {
       list.push_back (entry);
     }
 
+
+
+
+
+
+    inline void Mapper::add (guint8* memory_buffer)
+    {
+      assert (mem == NULL);
+      assert (list.size() == 0);
+      mem = memory_buffer;
+    }
+
+
+
+
+
+
+
+
+    /** \brief make all files in the list read-only or read/write.
+     *
+     * Makes all files currently in the list read-only or read/write.
+     */
+    inline void Mapper::set_read_only (bool read_only)
+    {
+      for (guint s = 0; s < list.size(); s++) {
+        list[s].fmap.set_read_only (read_only); 
+        if (segment) segment[s] = list[s].start();
+      }
+    }
+
+
+
+
+
+
+    inline Mapper::Entry& Mapper::operator[] (guint index) { return (list[index]); }
+
+
+
+
+    inline float32 Mapper::re (gsize offset) const 
+    {
+      if (optimised) return (((float32*) segment[0])[offset]);
+      gssize nseg (offset/segsize);
+      return (get_func (segment[nseg], offset - nseg*segsize)); 
+    }
+
+
+
+
+
+    inline void Mapper::re (float32 val, gsize offset)
+    { 
+      if (optimised) ((float32*) segment[0])[offset] = val;
+      gssize nseg (offset/segsize);
+      put_func (val, segment[nseg], offset - nseg*segsize); 
+    }
+
+
+
+
+
+    inline float32 Mapper::im (gsize offset) const
+    { 
+      if (optimised) return (((float32*) segment[0])[offset+1]);
+      gssize nseg (offset/segsize);
+      return (get_func (segment[nseg], offset - nseg*segsize + 1)); 
+    }
+
+
+
+
+    inline void Mapper::im (float32 val, gsize offset)
+    { 
+      if (optimised) ((float32*) segment[0])[offset+1] = val;
+      gssize nseg (offset/segsize);
+      put_func (val, segment[nseg], offset - nseg*segsize + 1); 
+    }
+
+
+
+    inline void Mapper::set_temporary (bool temp)                { temporary = temp; }
 
   }
 }

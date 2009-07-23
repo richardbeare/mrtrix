@@ -23,83 +23,72 @@
 #ifndef __image_name_parser_h__
 #define __image_name_parser_h__
 
+#include <glibmm/fileutils.h>
+#include <glibmm/refptr.h>
+
 #include "ptr.h"
-#include "file/path.h"
 
 namespace MR {
   namespace Image {
 
     class NameParserItem {
+      protected:
+        guint                  seq_length;
+        String                 str;
+        std::vector<int>       seq;
+
       public:
-        NameParserItem () : seq_length (0) { }
+        NameParserItem ();
 
-        void                    set_str (const std::string& s) { clear (); str = s; }
-        void                    set_seq (const std::string& s) { clear (); if (s.size()) seq = parse_ints (s); seq_length = 1; }
-        void                    clear () { str.clear(); seq.clear(); seq_length = 0; }
+        void                   set_str (const String& s);
+        void                   set_seq (const String& s);
+        void                   clear ();
 
-        std::string             string () const { return (str); }
-        const std::vector<int>& sequence () const { return (seq); }
-        std::vector<int>&       sequence () { return (seq); }
-        bool                    is_string () const { return (seq_length == 0); }
-        bool                    is_sequence () const { return (seq_length != 0); }
-        uint                    size () const { return (seq_length ? seq_length : str.size()); }
+        String                 string () const;
+        const std::vector<int>&  sequence () const;
+        std::vector<int>&      sequence ();
+        bool                   is_string () const;
+        bool                   is_sequence () const;
+        guint                  size () const;
 
-        void                    calc_padding (uint maxval = 0);
+        void                   calc_padding (guint maxval = 0);
 
         friend std::ostream& operator<< (std::ostream& stream, const NameParserItem& item);
-
-      protected:
-        uint                   seq_length;
-        std::string            str;
-        std::vector<int>       seq;
     };
-
-
 
 
 
 
     class NameParser {
-      public:
-        NameParser () : folder (NULL) { } 
-        void                       parse (const std::string& imagename, uint max_num_sequences = UINT_MAX);
-        uint                       num () const { return (array.size()); }
-        std::string                spec () const { return (specification); }
-        const NameParserItem&      operator[] (uint i) const { return (array[i]); }
-        const std::vector<int>&    sequence (uint index) const { return (array[seq_index[index]].sequence()); }
-        uint                       ndim () const { return (seq_index.size()); }
-        uint                       index_of_sequence (uint number = 0) const { return (seq_index[number]); }
-
-        bool                       match (const std::string& file_name, std::vector<int>& indices) const;
-        void                       calculate_padding (const std::vector<int>& maxvals);
-        std::string                name (const std::vector<int>& indices);
-        std::string                get_next_match (std::vector<int>& indices, bool return_seq_index = false);
-
-        friend std::ostream& operator<< (std::ostream& stream, const NameParser& parser);
-
       private:
         std::vector<NameParserItem> array;
-        std::vector<uint>           seq_index;
-        std::string                 folder_name;
-        std::string                 specification;
-        std::string                 current_name;
-        Path::Dir*                  folder;
+        std::vector<guint>          seq_index;
+        String                      folder_name;
+        String                      specification;
+        String                      current_name;
+        Glib::Dir*                  folder;
 
-        void                        insert_str (const std::string& str) {
-          NameParserItem item;
-          item.set_str (str);
-          array.insert (array.begin(), item);
-        }
-        void                        insert_seq (const std::string& str) {
-          NameParserItem item;
-          item.set_seq (str);
-          array.insert (array.begin(), item);
-          seq_index.push_back (array.size()-1);
-        }
+        void                        insert_str (const String& str);
+        void                        insert_seq (const String& str);
+
+      public:
+        NameParser ();
+        void                       parse (const String& imagename, guint max_num_sequences = UINT_MAX);
+        guint                      num () const;
+        String                     spec () const;
+        const NameParserItem&      operator[] (guint i) const;
+        const std::vector<int>&    sequence (guint index) const;
+        guint                      ndim () const;
+        guint                      index_of_sequence (guint number = 0) const;
+
+        bool                       match (const String& file_name, std::vector<int>& indices) const;
+        void                       calculate_padding (const std::vector<int>& maxvals);
+        String                     name (const std::vector<int>& indices);
+
+        String                     get_next_match (std::vector<int>& indices, bool return_seq_index = false);
+
+        friend std::ostream& operator<< (std::ostream& stream, const NameParser& parser);
     };
-
-
-
 
 
 
@@ -108,14 +97,14 @@ namespace MR {
     class ParsedName {
       protected:
         std::vector<int>    indices;
-        std::string         filename;
+        String              filename;
 
       public:
-        ParsedName (const std::string& name, const std::vector<int>& index) : indices (index), filename (name) { }
+        ParsedName (const String& name, const std::vector<int>& index);
 
-        std::string         name () const { return (filename); }
-        uint                ndim () const { return (indices.size()); }
-        int                 index (uint num) const { return (indices[num]); }
+        String               name () const;
+        guint                ndim () const;
+        int                  index (guint num) const;
 
         bool                 operator< (const ParsedName& pn) const;
         friend std::ostream& operator<< (std::ostream& stream, const ParsedName& pin);
@@ -127,16 +116,115 @@ namespace MR {
 
     class ParsedNameList : public std::vector< RefPtr<ParsedName> > {
       protected:
-        void               count_dim (std::vector<int>& dim, uint& current_entry, uint current_dim) const;
-        uint               max_name_size;
+        void                count_dim (std::vector<int>& dim, guint& current_entry, guint current_dim) const;
+        guint               max_name_size;
 
       public:
-        std::vector<int>    parse_scan_check (const std::string& specifier, uint max_num_sequences = UINT_MAX);
+        std::vector<int>    parse_scan_check (const String& specifier, guint max_num_sequences = UINT_MAX);
         void                scan (NameParser& parser);
 
         std::vector<int>    count () const;
-        uint                biggest_filename_size () const { return (max_name_size); }
+        guint               biggest_filename_size () const;
     };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /****************************************************************
+     *               NameParserItem inline functions                *
+     ***************************************************************/
+
+    inline NameParserItem::NameParserItem () : seq_length (0) { }
+
+
+
+    inline void NameParserItem::clear () 
+    {
+      str.clear();
+      seq.clear();
+      seq_length = 0;
+    }
+
+
+
+    inline void NameParserItem::set_str (const String& s)
+    {
+      clear ();
+      str = s;
+    }
+
+
+
+    inline void NameParserItem::set_seq (const String& s)
+    { 
+      clear ();
+      if (s.size()) seq = parse_ints (s);
+      seq_length = 1; 
+    }
+
+
+
+    inline guint NameParserItem::size () const                         { return (seq_length ? seq_length : str.size()); }
+    inline String NameParserItem::string () const                      { return (str); }
+    inline const std::vector<int>& NameParserItem::sequence () const   { return (seq); }
+    inline std::vector<int>& NameParserItem::sequence ()               { return (seq); }
+    inline bool NameParserItem::is_string () const                     { return (seq_length == 0); }
+    inline bool NameParserItem::is_sequence () const                   { return (seq_length != 0); }
+
+
+
+
+    /****************************************************************
+     *                 NameParser inline functions                  *
+     ***************************************************************/
+
+    inline NameParser::NameParser () : folder (NULL) { } 
+    inline String NameParser::spec () const                                  { return (specification); }
+    inline guint NameParser::num () const                                    { return (array.size()); }
+    inline guint NameParser::ndim () const                                   { return (seq_index.size()); }
+    inline const NameParserItem& NameParser::operator[] (guint i) const      { return (array[i]); }
+    inline const std::vector<int>& NameParser::sequence (guint index) const { return (array[seq_index[index]].sequence()); }
+    inline guint NameParser::index_of_sequence (guint number) const          { return (seq_index[number]); }
+
+    inline void NameParser::insert_str (const String& str)
+    {
+      NameParserItem item;
+      item.set_str (str);
+      array.insert (array.begin(), item);
+    }
+    inline void NameParser::insert_seq (const String& str)
+    {
+      NameParserItem item;
+      item.set_seq (str);
+      array.insert (array.begin(), item);
+      seq_index.push_back (array.size()-1);
+    }
+
+
+
+
+
+    /****************************************************************
+     *                 ParsedName inline functions                  *
+     ***************************************************************/
+
+    inline ParsedName::ParsedName (const String& name, const std::vector<int>& index) : indices (index), filename (name) { }
+    inline String ParsedName::name () const                    { return (filename); }
+    inline guint ParsedName::ndim () const                            { return (indices.size()); }
+    inline int ParsedName::index (guint num) const                   { return (indices[num]); }
+    inline guint ParsedNameList::biggest_filename_size () const       { return (max_name_size); }
 
 
 

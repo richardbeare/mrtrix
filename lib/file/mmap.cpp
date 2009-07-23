@@ -24,20 +24,21 @@
     
 */
 
+#include <glib/gstdio.h>
+#include <glibmm/stringutils.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
 #include <windows.h>
 #else 
 #include <sys/mman.h>
 #endif
 
-#include "file/path.h"
 #include "file/mmap.h"
 #include "file/config.h"
 
-#include "file/gz.h"
+
 
 
 namespace MR {
@@ -45,9 +46,9 @@ namespace MR {
 
     namespace {
 
-      inline char random_char ()
+      gchar random_char ()
       {
-        char c = rand () % 62;
+        gchar c = rand () % 62;
         if (c < 10) return (c+48);
         if (c < 36) return (c+55);
         return (c+61);
@@ -55,109 +56,35 @@ namespace MR {
 
     }
 
-
-
-
-
-
-    MMap::MMap (const std::string& fname, off64_t desired_size_if_inexistant, off64_t data_offset, const char* suffix) :
-      fd (-1), 
-      addr (NULL), 
-      msize (0), 
-      byte_offset (data_offset), 
-      read_only (true),
-      delete_after (false),
-      mtime (0)
-    {
-      if (fname.size()) {
-        debug ("preparing memory-mapping for file \"" + fname + "\"");
-
-        filename = fname;
-        struct stat64 sbuf;
-        if (stat64 (filename.c_str(), &sbuf)) {
-
-          if (errno != ENOENT) 
-            throw Exception ("cannot stat file \"" + filename + "\": " + strerror(errno));
-
-          if (desired_size_if_inexistant == 0) 
-            throw Exception ("cannot access file \"" + filename + "\": " + strerror(errno));
-
-          int fid = open64 (filename.c_str(), O_CREAT | O_RDWR | O_EXCL, 0755);
-          if (fid < 0) throw Exception ("error creating file \"" + filename + "\": " + strerror(errno));
-
-          int status = ftruncate64 (fid, desired_size_if_inexistant);
-          close (fid);
-          if (status) throw Exception ("WARNING: cannot resize file \"" + filename + "\": " + strerror(errno));
-
-          read_only = false;
-          msize = desired_size_if_inexistant;
-        }
-        else {
-          if (desired_size_if_inexistant) 
-            throw Exception ("cannot create file \"" + filename + "\": it already exists");
-
-          msize = sbuf.st_size;
-          mtime = sbuf.st_mtime;
-        }
-
-      }
-      else {
-
-        if (!desired_size_if_inexistant) throw Exception ("cannot create empty scratch file");
-
-        debug ("creating and mapping scratch file");
-
-        assert (suffix);
-        filename = std::string (TMPFILE_ROOT) + "XXXXXX." + suffix; 
-
-        int fid;
-        do {
-          for (int n = 0; n < 6; n++) 
-            filename[TMPFILE_ROOT_LEN+n] = random_char();
-        } while ((fid = open64 (filename.c_str(), O_CREAT | O_RDWR | O_EXCL, 0755)) < 0);
-
-
-        int status = ftruncate64 (fid, desired_size_if_inexistant);
-        close (fid);
-        if (status) throw Exception ("cannot resize file \"" + filename + "\": " + strerror(errno));
-
-        msize = desired_size_if_inexistant;
-        read_only = false;
-      }
-    }
-
-
-
-
-    MMap::~MMap ()
+    MMap::Base::~Base ()
     {
       unmap(); 
       if (delete_after) {
         debug ("deleting file \"" + filename + "\"...");
-        if (unlink (filename.c_str())) 
-          error ("WARNING: error deleting file \"" + filename + "\": " + strerror(errno));
+        if (g_unlink (filename.c_str())) 
+          error ("WARNING: error deleting file \"" + filename + "\": " + Glib::strerror(errno));
       }
     }
 
 
-    void MMap::map()
+    void MMap::Base::map()
     {
       if (msize == 0) throw Exception ("attempt to map file \"" + filename + "\" using invalid mmap!");
       if (addr) return;
 
-      if ((fd = open64 (filename.c_str(), (read_only ? O_RDONLY : O_RDWR), 0755)) < 0) 
-        throw Exception ("error opening file \"" + filename + "\": " + strerror(errno));
+      if ((fd = g_open (filename.c_str(), (read_only ? O_RDONLY : O_RDWR), 0755)) < 0) 
+        throw Exception ("error opening file \"" + filename + "\": " + Glib::strerror(errno));
 
       try {
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
         HANDLE handle = CreateFileMapping ((HANDLE) _get_osfhandle(fd), NULL, 
             (read_only ? PAGE_READONLY : PAGE_READWRITE), 0, msize, NULL);
         if (!handle) throw 0;
-        addr = static_cast<uint8_t*> (MapViewOfFile (handle, (read_only ? FILE_MAP_READ : FILE_MAP_ALL_ACCESS), 0, 0, msize));
+        addr = (void*) MapViewOfFile (handle, (read_only ? FILE_MAP_READ : FILE_MAP_ALL_ACCESS), 0, 0, msize);
         if (!addr) throw 0;
         CloseHandle (handle);
 #else 
-        addr = static_cast<uint8_t*> (mmap64((char*)0, msize, (read_only ? PROT_READ : PROT_READ | PROT_WRITE), MAP_SHARED, fd, 0));
+        addr = (void *) mmap((char*)0, msize, (read_only ? PROT_READ : PROT_READ | PROT_WRITE), MAP_SHARED, fd, 0);
         if (addr == MAP_FAILED) throw 0;
 #endif
         debug ("file \"" + filename + "\" mapped at " + str (addr) 
@@ -167,7 +94,7 @@ namespace MR {
       catch (...) {
         close (fd);
         addr = NULL;
-        throw Exception ("memmory-mapping failed for file \"" + filename + "\": " + strerror(errno));
+        throw Exception ("memmory-mapping failed for file \"" + filename + "\": " + Glib::strerror(errno));
       }
     }
 
@@ -175,18 +102,18 @@ namespace MR {
 
 
 
-    void MMap::unmap()
+    void MMap::Base::unmap()
     {
       if (!addr) return;
 
       debug ("unmapping file \"" + filename + "\"");
 
-#ifdef WINDOWS
+#ifdef G_OS_WIN32
       if (!UnmapViewOfFile ((LPVOID) addr))
 #else 
         if (munmap (addr, msize))
 #endif
-          error ("error unmapping file \"" + filename + "\": " + strerror(errno));
+          error ("error unmapping file \"" + filename + "\": " + Glib::strerror(errno));
 
       close (fd);
       fd = -1;
@@ -201,21 +128,21 @@ namespace MR {
 
 
 
-    void MMap::resize (off64_t new_size)
+    void MMap::Base::resize (gsize new_size)
     {
       debug ("resizing file \"" + filename + "\" to " + str (new_size) + "...");
 
       if (read_only) throw Exception ("attempting to resize read-only file \"" + filename + "\"");
       unmap();
 
-      if ((fd = open64 (filename.c_str(), O_RDWR, 0755)) < 0) 
-        throw Exception ("error opening file \"" + filename + "\" for resizing: " + strerror(errno));
+      if ((fd = g_open (filename.c_str(), O_RDWR, 0755)) < 0) 
+        throw Exception ("error opening file \"" + filename + "\" for resizing: " + Glib::strerror(errno));
 
-      int status = ftruncate64 (fd, new_size);
+      int status = ftruncate (fd, new_size);
 
       close (fd);
       fd = -1;
-      if (status) throw Exception ("cannot resize file \"" + filename + "\": " + strerror(errno));
+      if (status) throw Exception ("cannot resize file \"" + filename + "\": " + Glib::strerror(errno));
 
       msize = new_size;
     }
@@ -228,16 +155,87 @@ namespace MR {
 
 
 
+    void MMap::init (const String& fname, gsize desired_size_if_inexistant, const gchar* suffix)
+    {
+      base = new Base;
+
+      try {
+        if (fname.size()) {
+          debug ("preparing file \"" + fname + "\"");
+
+          base->filename = fname;
+          struct stat sbuf;
+          if (g_stat (base->filename.c_str(), &sbuf)) {
+
+            if (errno != ENOENT) 
+              throw Exception ("cannot stat file \"" + base->filename + "\": " + Glib::strerror(errno));
+
+            if (desired_size_if_inexistant == 0) 
+              throw Exception ("cannot access file \"" + base->filename + "\": " + Glib::strerror(errno));
+
+            int fid = g_open (base->filename.c_str(), O_CREAT | O_RDWR | O_EXCL, 0755);
+            if (fid < 0) throw Exception ("error creating file \"" + base->filename + "\": " + Glib::strerror(errno));
+
+            int status = ftruncate (fid, desired_size_if_inexistant);
+            close (fid);
+            if (status) throw Exception ("WARNING: cannot resize file \"" + base->filename + "\": " + Glib::strerror(errno));
+
+            base->read_only = false;
+            base->msize = desired_size_if_inexistant;
+
+            return;
+          }
+          else {
+            if (desired_size_if_inexistant) 
+              throw Exception ("cannot create file \"" + base->filename + "\": it already exists");
+
+            base->msize = sbuf.st_size;
+            base->mtime = sbuf.st_mtime;
+
+            return;
+          }
+        }
+      }
+      catch (Exception) {
+        base = NULL;
+        throw;
+      }
+
+
+
+
+      if (!desired_size_if_inexistant) throw Exception ("cannot create empty scratch file");
+
+      debug ("creating and mapping scratch file");
+
+      assert (suffix);
+      base->filename = String (TMPFILE_ROOT) + "XXXXXX." + suffix; 
+
+      int fid;
+      do {
+        for (int n = 0; n < 6; n++) 
+          base->filename[TMPFILE_ROOT_LEN+n] = random_char();
+      } while ((fid = g_open (base->filename.c_str(), O_CREAT | O_RDWR | O_EXCL, 0755)) < 0);
+
+
+      int status = ftruncate (fid, desired_size_if_inexistant);
+      close (fid);
+      if (status) throw Exception ("cannot resize file \"" + base->filename + "\": " + Glib::strerror(errno));
+
+      base->msize = desired_size_if_inexistant;
+      base->read_only = false;
+    }
+
 
 
 
     bool MMap::changed () const
     { 
-      assert (fd >= 0);
-      struct stat64 sbuf;
-      if (fstat64 (fd, &sbuf)) return (false);
-      if (off64_t (msize) != sbuf.st_size) return (true);
-      if (mtime != sbuf.st_mtime) return (true);
+      if (!base) return (false);
+      struct stat sbuf;
+      if (g_stat (base->filename.c_str(), &sbuf)) return (false);
+      if (off_t (base->msize) != sbuf.st_size) return (true);
+      if (base->mtime != sbuf.st_mtime) return (true);
       return (false);
     }
 

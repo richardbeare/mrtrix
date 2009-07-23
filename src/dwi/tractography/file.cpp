@@ -18,13 +18,9 @@
     You should have received a copy of the GNU General Public License
     along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
 
-
-    01-05-2009 J-Donald Tournier <d.tournier@brain.org.au>
-    * fix minor bug that caused first point of first track to be omitted.
-
 */
 
-#include "file/path.h"
+#include <glibmm/stringutils.h>
 #include "dwi/tractography/file.h"
 
 
@@ -32,7 +28,7 @@ namespace MR {
   namespace DWI {
     namespace Tractography {
 
-      void Reader::open (const std::string& file, Properties& properties)
+      void Reader::open (const String& file, Properties& properties)
       {
         properties.clear();
         dtype = DataType::Undefined;
@@ -40,13 +36,13 @@ namespace MR {
         try {
           Exception::Lower s (1);
           File::KeyValue kv (file, "mrtrix tracks");
-          std::string data_file;
+          String data_file;
 
           while (kv.next()) {
-            std::string key = lowercase (kv.key());
+            String key = lowercase (kv.key());
             if (key == "roi") {
               try {
-                std::vector<std::string> V (split (kv.value()));
+                std::vector<String> V (split (kv.value()));
                 if (V.size() != 2) throw 1;
                 ROI::Type type;
 
@@ -76,19 +72,19 @@ namespace MR {
           if (data_file.empty()) throw Exception ("missing \"files\" specification for tracks file \"" + file + "\"");
 
           std::istringstream files_stream (data_file);
-          std::string fname;
+          String fname;
           files_stream >> fname;
-          off64_t offset = 0;
+          goffset offset = 0;
           if (files_stream.good()) {
             try { files_stream >> offset; }
             catch (...) { throw Exception ("invalid offset specified for file \"" + fname + "\" in tracks file \"" + file + "\""); }
           }
 
-          if (fname != ".") fname = Path::join (Path::dirname (file), fname);
+          if (fname != ".") fname = Glib::build_filename (Glib::path_get_dirname (file), fname);
           else fname = file;
 
           in.open (fname.c_str(), std::ios::in | std::ios::binary);
-          if (!in) throw Exception ("error opening tracks data file \"" + fname + "\": " + strerror(errno));
+          if (!in) throw Exception ("error opening tracks data file \"" + fname + "\": " + Glib::strerror(errno));
           in.seekg (offset);
         }
         catch (Exception e) {
@@ -118,7 +114,7 @@ namespace MR {
         if (!in.is_open()) return (false);
         do {
           Point p = get_next_point();
-          if (isinf (p[0])) {
+          if (gsl_isinf (p[0])) {
             in.close();
             return (false);
           }
@@ -127,7 +123,7 @@ namespace MR {
             return (true);
           }
 
-          if (isnan (p[0])) return (true);
+          if (gsl_isnan (p[0])) return (true);
           tck.push_back (p);
         } while (in.good());
 
@@ -152,23 +148,23 @@ namespace MR {
 
 
 
-      void Writer::create (const std::string& file, const Properties& properties)
+      void Writer::create (const String& file, const Properties& properties)
       {
         out.open (file.c_str(), std::ios::out | std::ios::binary);
-        if (!out) throw Exception ("error creating tracks file \"" + file + "\": " + strerror (errno));
+        if (!out) throw Exception ("error creating tracks file \"" + file + "\": " + Glib::strerror (errno));
 
         out << "mrtrix tracks\nEND\n";
         for (Properties::const_iterator i = properties.begin(); i != properties.end(); ++i) 
           out << i->first << ": " << i->second << "\n";
 
-        for (std::vector<std::string>::const_iterator i = properties.comments.begin(); i != properties.comments.end(); ++i)
+        for (std::vector<String>::const_iterator i = properties.comments.begin(); i != properties.comments.end(); ++i)
           out << "comment: " << *i << "\n";
    
         for (std::vector<RefPtr<ROI> >::const_iterator i = properties.roi.begin(); i != properties.roi.end(); ++i)
           out << "roi: " << (*i)->specification() << "\n";
 
         out << "datatype: " << dtype.specifier() << "\n";
-        off64_t data_offset = off64_t(out.tellp()) + 65;
+        goffset data_offset = goffset(out.tellp()) + 65;
         out << "file: . " << data_offset << "\n";
         out << "count: ";
         count_offset = out.tellp();
@@ -176,7 +172,6 @@ namespace MR {
         out.seekp (0);
         out << "mrtrix tracks    ";
         out.seekp (data_offset);
-        write_next_point (Point (INFINITY, INFINITY, INFINITY));
       }
 
 

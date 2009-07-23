@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -37,7 +35,7 @@ DESCRIPTION = {
 
 ARGUMENTS = {
   Argument ("image1", "first input image", "the first input image.").type_image_in (),
-  Argument ("image2", "second input image", "the second input image.", AllowMultiple).type_image_in (),
+  Argument ("image2", "second input image", "the second input image.", true, true).type_image_in (),
   Argument ("output", "output image", "the output image.").type_image_out (),
   Argument::End
 };
@@ -48,7 +46,7 @@ OPTIONS = { Option::End };
 
 
 EXECUTE {
-  uint num_images = argument.size()-1;
+  guint num_images = argument.size()-1;
 
   RefPtr<Image::Object> in[num_images];
   in[0] = argument[0].get_image();
@@ -56,17 +54,17 @@ EXECUTE {
 
   header.data_type = DataType::Float32;
 
-  for (size_t i = 1; i < num_images; i++) {
+  for (guint i = 1; i < num_images; i++) {
     in[i] = argument[i].get_image();
 
     if (in[i]->is_complex()) header.data_type = DataType::CFloat32;
 
     if (in[i]->ndim() > header.axes.ndim()) 
-      header.axes.resize (in[i]->ndim());
+      header.axes.set_ndim (in[i]->ndim());
 
-    for (size_t n = 0; n < header.axes.size(); n++) { 
-      if (header.axes[n].dim != in[i]->dim(n)) {
-        if (header.axes[n].dim < 2) header.axes[n] = in[i]->header().axes[n];
+    for (int n = 0; n < header.axes.ndim(); n++) { 
+      if (header.axes.dim[n] != in[i]->dim(n)) {
+        if (header.axes.dim[n] < 2) header.axes.copy (n, in[i]->header().axes, n);
         else if (in[i]->dim(n) > 1) throw Exception ("dimension mismatch between input files");
       }
     }
@@ -74,28 +72,26 @@ EXECUTE {
 
 
 
-  Image::Voxel out (*argument[num_images].get_image (header));
-  out.image.map();
+  Image::Position out (*argument[num_images].get_image (header));
 
 
-  ProgressBar::init (voxel_count(out), "adding...");
+  ProgressBar::init (out.voxel_count(), "adding...");
 
-  for (size_t i = 0; i < num_images; i++) {
-    Image::Voxel y (*in[i]);
-    y.image.map();
+  for (guint i = 0; i < num_images; i++) {
+    Image::Position y (*in[i]);
 
     do {
 
-      for (size_t n = 0; n < y.ndim(); n++)
-        y[n] = y.dim(n) > 1 ? out[n] : 0;
+      for (int n = 0; n < y.ndim(); n++)
+        y.set (n, y.dim(n) > 1 ? out[n] : 0);
 
-      float val = i ? out.real() : 0.0;
-      out.real() = val + y.real();
+      float val = i ? out.re() : 0.0;
+      out.re (val + y.re());
       
       if (out.is_complex()) {
-        val = i ? out.imag() : 0.0;
-        if (y.is_complex()) val += y.imag();
-        out.imag() = val;
+        val = i ? out.im() : 0.0;
+        if (y.is_complex()) val += y.im();
+        out.im (val);
       }
 
       ProgressBar::inc();

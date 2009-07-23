@@ -23,9 +23,8 @@
 #include <gsl/gsl_multimin.h>
 
 #include "app.h"
-#include "progressbar.h"
 #include "math/vector.h"
-#include "math/rng.h"
+#include "math/simulation.h"
 
 using namespace std; 
 using namespace MR; 
@@ -60,7 +59,7 @@ OPTIONS = {
 
 namespace {
   double power = -1.0;
-  uint   ndirs = 0;
+  guint   ndirs = 0;
 }
 
 
@@ -79,10 +78,10 @@ class SinCos {
     double rdel (const SinCos& B) const;
 
   public:
-    SinCos (const gsl_vector* v, uint index);
+    SinCos (const gsl_vector* v, guint index);
     double f (const SinCos& B);
-    void   df (const SinCos& B, gsl_vector* deriv, uint i, uint j);
-    double fdf (const SinCos& B, gsl_vector* deriv, uint i, uint j);
+    void   df (const SinCos& B, gsl_vector* deriv, guint i, guint j);
+    double fdf (const SinCos& B, gsl_vector* deriv, guint i, guint j);
 };
 
 
@@ -96,7 +95,7 @@ void range (double& azimuth, double& elevation);
 
 
 EXECUTE {
-  uint niter = 10000;
+  guint niter = 10000;
   float target_power = 128.0;
 
   std::vector<OptBase> opt = get_options (0); // power
@@ -109,10 +108,10 @@ EXECUTE {
 
 
   Math::RNG    rng;
-  Math::Vector<double> v (2*ndirs-3);
+  Math::Vector v (2*ndirs-3);
 
   v[0] = asin (2.0 * rng.uniform() - 1.0);
-  for (uint n = 1; n < 2*ndirs-3; n+=2) {
+  for (guint n = 1; n < 2*ndirs-3; n+=2) {
     v[n] =  M_PI * (2.0 * rng.uniform() - 1.0);
     v[n+1] = asin (2.0 * rng.uniform() - 1.0);
   }
@@ -131,9 +130,9 @@ EXECUTE {
   ProgressBar::init (0, "Optimising directions");
   for (power = -1.0; power >= -target_power/2.0; power *= 2.0) {
     info ("setting power = " + str (-power*2.0));
-    gsl_multimin_fdfminimizer_set (minimizer, &fdf, &v, 0.01, 1e-4);
+    gsl_multimin_fdfminimizer_set (minimizer, &fdf, v.get_gsl_vector(), 0.01, 1e-4);
 
-    for (uint iter = 0; iter < niter; iter++) {
+    for (guint iter = 0; iter < niter; iter++) {
 
       int status = gsl_multimin_fdfminimizer_iterate (minimizer);
 
@@ -141,24 +140,24 @@ EXECUTE {
         info ("[ " + str(iter) + " ] (pow = " + str(-power*2.0) + ") E = " + str(minimizer->f) + ", grad = " + str(gsl_blas_dnrm2 (minimizer->gradient)));
 
       if (status) {
-        info (std::string("iteration stopped: ") + gsl_strerror (status));
+        info (String("iteration stopped: ") + gsl_strerror (status));
         break;
       }
 
       ProgressBar::inc();
     }
-    gsl_vector_memcpy (&v, minimizer->x);
+    v.copy (minimizer->x);
   }
   ProgressBar::done();
 
 
 
-  Math::Matrix<double> directions (ndirs, 2);
+  Math::Matrix directions (ndirs, 2);
   directions(0,0) = 0.0;
   directions(0,1) = 0.0;
   directions(1,0) = 0.0;
   directions(1,1) = gsl_vector_get (minimizer->x, 0);
-  for (uint n = 2; n < ndirs; n++) {
+  for (guint n = 2; n < ndirs; n++) {
     double az = gsl_vector_get (minimizer->x, 2*n-3);
     double el = gsl_vector_get (minimizer->x, 2*n-2);
     range(az, el);
@@ -210,7 +209,7 @@ inline double SinCos::rdel (const SinCos& B) const
   return (multiplier * (B.cos_az*B.cos_el*cos_az*sin_el + B.sin_az*B.cos_el*sin_az*sin_el - B.sin_el*cos_el)); 
 }
 
-inline SinCos::SinCos (const gsl_vector* v, uint index) 
+inline SinCos::SinCos (const gsl_vector* v, guint index) 
 {
   double az = index > 1 ? gsl_vector_get (v, 2*index-3) : 0.0;
   double el = index ? gsl_vector_get (v, 2*index-2) : 0.0;
@@ -224,7 +223,7 @@ inline double SinCos::f (const SinCos& B)
   return (energy()); 
 }
 
-inline void SinCos::df (const SinCos& B, gsl_vector* deriv, uint i, uint j) 
+inline void SinCos::df (const SinCos& B, gsl_vector* deriv, guint i, guint j) 
 {
   dist (B); 
   init_deriv ();
@@ -240,7 +239,7 @@ inline void SinCos::df (const SinCos& B, gsl_vector* deriv, uint i, uint j)
 }
 
 
-inline double SinCos::fdf (const SinCos& B, gsl_vector* deriv, uint i, uint j)
+inline double SinCos::fdf (const SinCos& B, gsl_vector* deriv, guint i, guint j)
 {
   df (B, deriv, i, j);
   return (energy());
@@ -250,9 +249,9 @@ inline double SinCos::fdf (const SinCos& B, gsl_vector* deriv, uint i, uint j)
 double energy_f (const gsl_vector *x, void *params)
 {
   double  E = 0.0;
-  for (uint i = 0; i < ndirs; i++) {
+  for (guint i = 0; i < ndirs; i++) {
     SinCos I (x, i);
-    for (uint j = i+1; j < ndirs; j++) 
+    for (guint j = i+1; j < ndirs; j++) 
       E += 2.0 *I.f (SinCos (x, j));
   }
   return (E);
@@ -263,9 +262,9 @@ double energy_f (const gsl_vector *x, void *params)
 void energy_df (const gsl_vector *x, void *params, gsl_vector *df)
 {
   gsl_vector_set_zero (df);
-  for (uint i = 0; i < ndirs; i++) {
+  for (guint i = 0; i < ndirs; i++) {
     SinCos I (x, i);
-    for (uint j = i+1; j < ndirs; j++) 
+    for (guint j = i+1; j < ndirs; j++) 
       I.df (SinCos (x, j), df, i, j);
   }
 }
@@ -276,9 +275,9 @@ void energy_fdf (const gsl_vector *x, void *params, double *f, gsl_vector *df)
 {
   *f = 0.0;
   gsl_vector_set_zero (df);
-  for (uint i = 0; i < ndirs; i++) {
+  for (guint i = 0; i < ndirs; i++) {
     SinCos I (x, i);
-    for (uint j = i+1; j < ndirs; j++) 
+    for (guint j = i+1; j < ndirs; j++) 
       *f += 2.0 * I.fdf (SinCos (x, j), df, i, j);
   }
 }

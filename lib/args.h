@@ -24,9 +24,11 @@
 #define __args_h__
 
 #include "ptr.h"
+#include "image/object.h"
 
 namespace MR {
   namespace Image { 
+    class Object; 
     class Header;
   }
 
@@ -48,26 +50,20 @@ namespace MR {
     FloatSeq
   } ArgType;
 
-  typedef int ArgFlags;
-  const ArgFlags None = 0;
-  const ArgFlags Optional = 0x1;
-  const ArgFlags AllowMultiple = 0x2;
-
-
-  const char* argument_type_description (ArgType type);
+  const gchar* argument_type_description (ArgType type);
 
 
   class ArgData {
     public:
-      ArgData () : type (Undefined) { data.string = NULL; }
+      ArgData ();
       ArgType   type;
       union {
         int         i;
         float       f;
-        const char* string;
+        const gchar* string;
       } data;
 
-      RefPtr<Image::Header>  image;
+      RefPtr<Image::Object>  image;
       friend std::ostream& operator<< (std::ostream& stream, const ArgData& a)
       {
         stream << "{ arg type: " << a.type << " }";
@@ -86,25 +82,21 @@ namespace MR {
       RefPtr<ArgData> data;
 
     public:
-      ArgBase () { }
-      ArgBase (const Argument& arg, const char* string);
+      ArgBase ();
+      ArgBase (const Argument& arg, const gchar* string);
 
-      int                 get_int () const     { return (data->data.i); }
-      float               get_float () const   { return (data->data.f); }
-      const char*         get_string () const  { return (data->data.string); }
-      RefPtr<Image::Header>  get_image () const   { assert (type() == ImageIn); return (data->image); }
-      RefPtr<Image::Header>  get_image (Image::Header& header) const {
-        assert (type() == ImageOut);
-        //data->image->create (get_string(), header);
-        return (data->image); 
-      }
+      int                 get_int () const;
+      float               get_float () const;
+      const gchar*         get_string () const;
+      RefPtr<Image::Object>  get_image () const;
+      RefPtr<Image::Object>  get_image (Image::Header& header) const;
 
-      ArgType              type () const { return (!data ? Undefined : data->type ); }
+      ArgType              type () const;
 
       friend std::ostream& operator<< (std::ostream& stream, const ArgBase& arg);
       friend class Dialog::Window;
       friend class Dialog::Argument;
-      friend class Image::Header;
+      friend class Image::Object;
   };
 
 
@@ -113,7 +105,7 @@ namespace MR {
 
   class OptBase : public std::vector<ArgBase> {
     public:
-      uint index;
+      guint index;
 
       friend std::ostream& operator<< (std::ostream& stream, const OptBase& opt);
       friend class Dialog::Window;
@@ -122,46 +114,42 @@ namespace MR {
 
 
   class Argument {
+    friend class ArgBase;
     public:
-      Argument () : type (Undefined) { sname = lname = desc = NULL; } 
-      Argument (const char* Short_Name, 
-          const char* Long_Name, 
-          const char* Description, 
-          ArgFlags flags = None) :
-        sname (Short_Name),
-        lname (Long_Name),
-        desc (Description),
-        mandatory (!(flags & Optional)),
-        allow_multiple (flags & AllowMultiple) { }
+      Argument ();
+      Argument (const gchar* Short_Name, 
+          const gchar* Long_Name, 
+          const gchar* Description, 
+          bool Mandatory = true, 
+          bool Allow_Multiple = false);
 
-      const char* sname;
-      const char* lname;
-      const char* desc;
+      const gchar* sname;
+      const gchar* lname;
+      const gchar* desc;
       bool mandatory, allow_multiple;
       ArgType type;
 
       union {
         struct { int def, min, max; }     i;
         struct { float def, min, max; }   f;
-        const char*                       string;
-        const char**                      choice;
+        const gchar*                       string;
+        const gchar**                      choice;
       } extra_info;
 
       const Argument& type_integer (int lowest, int highest, int default_value);
       const Argument& type_float   (float lowest, float highest, float default_value);
-      const Argument& type_string  (const char* default_value = NULL);
+      const Argument& type_string  (const gchar* default_value = NULL);
       const Argument& type_file    ();
       const Argument& type_image_in ();
       const Argument& type_image_out ();
-      const Argument& type_choice  (const char** choices);
+      const Argument& type_choice  (const gchar** choices);
       const Argument& type_sequence_int ();
       const Argument& type_sequence_float ();
 
-      bool    is_valid () const { return (sname); }
+      bool    is_valid () const;
 
       static const Argument End;
       friend std::ostream& operator<< (std::ostream& stream, const Argument& arg);
-      friend class ArgBase;
   };
 
 
@@ -170,24 +158,20 @@ namespace MR {
 
   class Option : public std::vector<Argument> {
     public:
-      Option () { sname = lname = desc = NULL; } 
-      Option (const char* Short_Name, 
-          const char* Long_Name,
-          const char* Description,
-          ArgFlags flags = Optional) :
-        sname (Short_Name),
-        lname (Long_Name),
-        desc (Description),
-        mandatory (!(flags & Optional)),
-        allow_multiple (flags & AllowMultiple) { }
+      Option ();
+      Option (const gchar* Short_Name, 
+          const gchar* Long_Name,
+          const gchar* Description,
+          bool Mandatory = false, 
+          bool Allow_Multiple = false);
 
-      const char* sname;
-      const char* lname;
-      const char* desc;
+      const gchar* sname;
+      const gchar* lname;
+      const gchar* desc;
       bool mandatory, allow_multiple;
 
-      Option& append (const Argument& argument) { std::vector<Argument>::push_back (argument); return (*this); }
-      bool    is_valid () const { return (sname); }
+      Option& append (const Argument& argument);
+      bool    is_valid () const;
 
       friend std::ostream& operator<< (std::ostream& stream, const Option& opt);
       friend std::ostream& operator<< (std::ostream& stream, const OptBase& opt);
@@ -200,6 +184,53 @@ namespace MR {
 
 
 
+
+
+
+  inline ArgData::ArgData () : type (Undefined) { data.string = NULL; }
+
+  inline ArgBase::ArgBase () { }
+
+  inline int         ArgBase::get_int () const     { return (data->data.i); }
+  inline float       ArgBase::get_float () const   { return (data->data.f); }
+  inline const gchar* ArgBase::get_string () const  { return (data->data.string); }
+  inline RefPtr<Image::Object> ArgBase::get_image () const   { assert (type() == ImageIn); return (data->image); }
+  inline RefPtr<Image::Object> ArgBase::get_image (Image::Header& header) const
+  {
+    assert (type() == ImageOut);
+    data->image->create (get_string(), header);
+    return (data->image); 
+  }
+
+
+  inline ArgType ArgBase::type () const { return (!data ? Undefined : data->type ); }
+
+
+
+
+
+
+
+  inline Argument::Argument () : type (Undefined) { sname = lname = desc = NULL; } 
+
+
+  inline Argument::Argument (
+      const gchar* Short_Name,
+      const gchar* Long_Name,
+      const gchar* Description,
+      bool Mandatory,
+      bool Allow_Multiple) :
+    sname (Short_Name),
+    lname (Long_Name),
+    desc (Description),
+    mandatory (Mandatory),
+    allow_multiple (Allow_Multiple)
+  {
+  }
+
+
+
+  inline bool Argument::is_valid () const { return (sname); }
 
 
 
@@ -222,14 +253,14 @@ namespace MR {
     return (*this);
   }
 
-  inline const Argument& Argument::type_string (const char* default_value)
+  inline const Argument& Argument::type_string (const gchar* default_value)
   {
     type = Text;
     extra_info.string = default_value;
     return (*this);
   }
 
-  inline const Argument& Argument::type_choice (const char** choices)
+  inline const Argument& Argument::type_choice (const gchar** choices)
   {
     type = Choice;
     extra_info.choice = choices;
@@ -272,6 +303,34 @@ namespace MR {
   }
 
 
+
+
+
+
+  inline Option::Option () { sname = lname = desc = NULL; } 
+
+  inline Option::Option (
+      const gchar* Short_Name, 
+      const gchar* Long_Name,
+      const gchar* Description,
+      bool Mandatory,
+      bool Allow_Multiple) :
+    sname (Short_Name),
+    lname (Long_Name),
+    desc (Description),
+    mandatory (Mandatory),
+    allow_multiple (Allow_Multiple)
+  {
+  }
+
+  inline Option& Option::append (const Argument& argument)
+  {
+    std::vector<Argument>::push_back (argument);
+    return (*this);
+  }
+
+  inline bool Option::is_valid () const { return (sname); }
+  
 }
 
 #endif

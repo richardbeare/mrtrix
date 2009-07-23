@@ -28,7 +28,7 @@ namespace MR {
   namespace Viewer {
     namespace Mode {
 
-      RefPtr<Base> create (Pane& parent, uint index)
+      RefPtr<Base> create (Pane& parent, guint index)
       {
         switch (index) {
           case 0: return (RefPtr<Base> (new Normal (parent)));

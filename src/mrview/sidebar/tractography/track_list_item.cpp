@@ -38,7 +38,7 @@ namespace MR {
 
       Point TrackListItem::Track::Point::normal;
 
-      void TrackListItem::load (const std::string& filename) 
+      void TrackListItem::load (const String& filename) 
       {
         file = filename;
         tracks.clear();
@@ -63,7 +63,7 @@ namespace MR {
               Point dir = tck[1] - tck[0];
               dest[0].set_colour (dir.normalise());
 
-              uint i;
+              guint i;
               for (i = 1; i < dest.size()-1; i++) {
                 dest[i].set_pos (tck[i]);
                 dir = tck[i+1] - tck[i-1];

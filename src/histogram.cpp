@@ -20,15 +20,13 @@
 
 */
 
-#include "progressbar.h"
 #include "histogram.h"
 #include "min_max.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 namespace MR {
 
-  Histogram::Histogram (Image::Voxel& ima, uint num_buckets)
+  Histogram::Histogram (Image::Position& ima, guint num_buckets)
   {
     if (num_buckets < 10) throw Exception ("Error initialising Histogram: number of buckets must be greater than 10");
 
@@ -38,23 +36,23 @@ namespace MR {
     float min, max;
     get_min_max (ima, min, max);
 
-    for (size_t n = 0; n < list.size(); n++)
+    for (guint n = 0; n < list.size(); n++)
       list[n].value = min + ( (max-min) * (n + 0.5) / list.size() );
 
-    ProgressBar::init (voxel_count(ima.image), "building histogram...");
+    ProgressBar::init (ima.voxel_count(), "building histogram...");
 
     do {
-      float val = ima.real();
+      float val = ima.re();
 
       if (finite(val)) { 
-        uint pos = (uint) ( list.size() * ((val - min)/(max-min)) );
+        guint pos = (guint) ( list.size() * ((val - min)/(max-min)) );
         if (pos >= list.size()) pos = list.size()-1;
         list[pos].frequency++;
       }
       if (ima.is_complex()) {
-        val = ima.imag();
+        val = ima.im();
         if (finite(val)) {
-          uint pos = (uint) ( list.size() * (val - min)/(max-min) );
+          guint pos = (guint) ( list.size() * (val - min)/(max-min) );
           if (pos >= list.size()) pos = list.size()-1;
           list[pos].frequency++;
         }
@@ -75,15 +73,15 @@ namespace MR {
 
   float Histogram::first_min() const
   {
-    uint first_peak = 0;
-    uint first_peak_index = 0;
-    uint second_peak = 0;
-    uint second_peak_index = 0;
-    uint first_minimum = 0;
-    uint first_min_index = 0;
-    uint range_step = list.size()/20;
-    uint range = list.size()/20;
-    uint index;
+    guint first_peak = 0;
+    guint first_peak_index = 0;
+    guint second_peak = 0;
+    guint second_peak_index = 0;
+    guint first_minimum = 0;
+    guint first_min_index = 0;
+    guint range_step = list.size()/20;
+    guint range = list.size()/20;
+    guint index;
 
     for (index = 0; index < range; index++) {
       if (list[index].frequency > first_peak) {

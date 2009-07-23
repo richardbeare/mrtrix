@@ -25,63 +25,38 @@
 namespace MR {
   namespace Image {
 
-    const char* Axes::left_to_right = "left->right";
-    const char* Axes::posterior_to_anterior = "posterior->anterior";
-    const char* Axes::inferior_to_superior = "inferior->superior";
-    const char* Axes::time = "time";
-    const char* Axes::real_imag = "real-imaginary";
-    const char* Axes::millimeters = "mm";
-    const char* Axes::milliseconds = "ms";
+    const gchar* Axis::left_to_right = "left->right";
+    const gchar* Axis::posterior_to_anterior = "posterior->anterior";
+    const gchar* Axis::inferior_to_superior = "inferior->superior";
+    const gchar* Axis::time = "time";
+    const gchar* Axis::real_imag = "real-imaginary";
+    const gchar* Axis::millimeters = "mm";
+    const gchar* Axis::milliseconds = "ms";
 
 
-
-    void Axes::sanitise ()
+    std::vector<Axis> parse_axes_specifier (const Axes& original, const String& specifier)
     {
-      // remove unset/invalid axis orderings:
-      for (size_t a = 0; a < ndim(); a++) 
-        if (order(a) >= ndim()) 
-          order(a) = find_free_axis();
+      std::vector<Axis> parsed (original.ndim());
 
-      // remove duplicates:
-      for (size_t a = 1; a < ndim(); a++) {
-        for (size_t n = 0; n < a; n++) {
-          if (order(a) == order(n)) { 
-            order(a) = find_free_axis();
-            break; 
-          }
-        }
-      }
-    }
-
-
-
-
-
-
-
-    std::vector<Axes::Order> parse_axes_specifier (const Axes& original, const std::string& specifier)
-    {
-      std::vector<Axes::Order> parsed (original.ndim());
-
-      size_t str = 0;
-      size_t lim = 0;
-      size_t end = specifier.size();
-      size_t current = 0;
+      int str = 0;
+      int lim = 0;
+      int end = specifier.size();
+      int current = 0;
 
       try {
         while (str <= end) {
-          parsed[current].forward = original.forward(current);
+          parsed[current].forward = original.forward[current];
           if (specifier[str] == '+') { parsed[current].forward = true; str++; }
           else if (specifier[str] == '-') { parsed[current].forward = false; str++; }
           else if (!( specifier[str] == '\0' || specifier[str] == ',' ) && !isdigit (specifier[str])) throw 0;
 
           lim = str;
 
-          if (specifier[str] == '\0' || specifier[str] == ',') parsed[current].order = original.order (current);
+          if (specifier[str] == '\0' || specifier[str] == ',') parsed[current].axis = original.axis[current];
           else {
             while (isdigit (specifier[lim])) lim++;
             if (specifier[lim] != ',' && specifier[lim] != '\0') throw 0;
-            parsed[current].order = to<uint> (specifier.substr (str, lim-str));
+            parsed[current].axis = to<guint> (specifier.substr (str, lim-str));
           }
 
           str = lim+1;
@@ -103,15 +78,15 @@ namespace MR {
 
 
 
-    void check_axes_specifier (const std::vector<Axes::Order>& parsed, size_t ndim)
+    void check_axes_specifier (const std::vector<Axis>& parsed, int ndims)
     {
-      for (size_t n = 0; n < parsed.size(); n++) {
-        if (parsed[n].order >= ndim) 
-          throw Exception ("axis ordering " + str (parsed[n].order) + " out of range");
+      for (guint n = 0; n < parsed.size(); n++) {
+        if (parsed[n].axis >= ndims) 
+          throw Exception ("axis " + str (parsed[n].axis) + " out of range");
 
-        for (size_t i = 0; i < n; i++) 
-          if (parsed[i].order == parsed[n].order) 
-            throw Exception ("duplicate axis ordering (" + str (parsed[n].order) + ")");
+        for (guint i = 0; i < n; i++) 
+          if (parsed[i].axis == parsed[n].axis) 
+            throw Exception ("duplicate axis (" + str (parsed[n].axis) + ")");
       }
     }
 
@@ -123,15 +98,15 @@ namespace MR {
     std::ostream& operator<< (std::ostream& stream, const Axes& axes)
     {
       stream << "dim [ ";
-      for (size_t n = 0; n < axes.ndim(); n++) stream << axes.dim(n) << " ";
+      for (int n = 0; n < axes.ndim(); n++) stream << axes.dim[n] << " ";
       stream << "], vox [ ";
-      for (size_t n = 0; n < axes.ndim(); n++) stream << axes.vox(n) << " ";
-      stream << "], order [ ";
-      for (size_t n = 0; n < axes.ndim(); n++) stream << ( axes.forward(n) ? '+' : '-' ) << axes.order(n) << " ";
+      for (int n = 0; n < axes.ndim(); n++) stream << axes.vox[n] << " ";
+      stream << "], axes [ ";
+      for (int n = 0; n < axes.ndim(); n++) stream << ( axes.forward[n] ? '+' : '-' ) << axes.axis[n] << " ";
       stream << "], desc [ ";
-      for (size_t n = 0; n < axes.ndim(); n++) stream << "\n" << axes.description(n) << "\" ";
+      for (int n = 0; n < axes.ndim(); n++) stream << "\n" << axes.desc[n] << "\" ";
       stream << "], units [ ";
-      for (size_t n = 0; n < axes.ndim(); n++) stream << "\n" << axes.units(n) << "\" ";
+      for (int n = 0; n < axes.ndim(); n++) stream << "\n" << axes.units[n] << "\" ";
 
       return (stream);
     }

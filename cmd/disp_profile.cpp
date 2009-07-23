@@ -75,7 +75,7 @@ OPTIONS = {
 class Window : public Gtk::Window 
 {
   public:
-    Window (const std::string& title, const Math::Matrix& coefs) : name (title), current (0), values (coefs)
+    Window (const String& title, const Math::Matrix& coefs) : name (title), current (0), values (coefs)
     {
       using namespace Gtk::Menu_Helpers;
 
@@ -125,7 +125,7 @@ class Window : public Gtk::Window
       realize();
 
       std::vector<float> val (values.columns());
-      for (uint n = 0; n < values.columns(); n++)
+      for (guint n = 0; n < values.columns(); n++)
         val[n] = values(0,n);
 
       render.set (val);
@@ -147,7 +147,7 @@ class Window : public Gtk::Window
       Gtk::MenuBar  menubar;
       Gtk::Menu     settings_menu, lod_menu, lmax_menu;
 
-      std::string name;
+      String name;
       int current;
       const Math::Matrix& values;
 
@@ -167,7 +167,7 @@ class Window : public Gtk::Window
           int c = current - ((event->state & MODIFIERS) == GDK_SHIFT_MASK ? 10 : 1);
           if (c < 0) { if (current == 0) return (true); current = 0; } else current = c;
           std::vector<float> val (values.columns());
-          for (uint n = 0; n < values.columns(); n++)
+          for (guint n = 0; n < values.columns(); n++)
             val[n] = values (current,n);
           render.set (val);
           set_title (name + " [ " + str(current) + " ]");
@@ -177,7 +177,7 @@ class Window : public Gtk::Window
           int c = current + ((event->state & MODIFIERS) == GDK_SHIFT_MASK ? 10 : 1);
           if (c >= int (values.rows())) { if (current == (int) values.rows()-1) return (true); current = values.rows()-1; } else current = c;
           std::vector<float> val (values.columns());
-          for (uint n = 0; n < values.columns(); n++)
+          for (guint n = 0; n < values.columns(); n++)
             val[n] = values (current,n);
           render.set (val);
           set_title (name + " [ " + str(current) + " ]");
@@ -193,7 +193,7 @@ class Window : public Gtk::Window
 
 class MyApp : public MR::App { 
   public: 
-    MyApp (int argc, char** argv) : App (argc, argv, __command_description, __command_arguments, __command_options, 
+    MyApp (int argc, gchar** argv) : App (argc, argv, __command_description, __command_arguments, __command_options, 
         __command_version, __command_author, __command_copyright) { } 
 
     void execute () { 
@@ -201,8 +201,8 @@ class MyApp : public MR::App {
       values.load (argument[0].get_string());
       if (values.columns() == 1) {
         Math::Matrix tmp (values.columns(), values.rows());
-        for (uint r = 0; r < values.rows(); r++)
-          for (uint c = 0; c < values.columns(); c++)
+        for (guint r = 0; r < values.rows(); r++)
+          for (guint c = 0; c < values.columns(); c++)
             tmp(c,r) = values(r,c);
         values = tmp;
       }
@@ -212,8 +212,8 @@ class MyApp : public MR::App {
         Math::Matrix R (values);
         values.allocate (R.rows(), DWI::SH::NforL (2*(R.columns()-1)));
         values.zero();
-        for (uint n = 0; n < R.rows(); n++) 
-          for (uint i = 0; i < R.columns(); i++) 
+        for (guint n = 0; n < R.rows(); n++) 
+          for (guint i = 0; i < R.columns(); i++) 
             values(n, DWI::SH::index(2*i,0)) = R(n,i);
       }
 
@@ -228,7 +228,7 @@ class MyApp : public MR::App {
 
 
 
-int main (int argc, char* argv[]) 
+int main (gint argc, gchar* argv[]) 
 { 
   try { 
     MyApp app (argc, argv);  

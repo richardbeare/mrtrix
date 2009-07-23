@@ -21,9 +21,7 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "image/misc.h"
+#include "image/position.h"
 
 using namespace std; 
 using namespace MR; 
@@ -37,7 +35,7 @@ DESCRIPTION = {
 };
 
 ARGUMENTS = {
-  Argument ("input", "input image", "input image to be multiplied.", AllowMultiple).type_image_in (),
+  Argument ("input", "input image", "input image to be multiplied.", true, true).type_image_in (),
   Argument ("output", "output image", "the output image.").type_image_out (),
   Argument::End
 };
@@ -59,11 +57,11 @@ EXECUTE {
     in_obj[i] = argument[i].get_image();
     if (in_obj[i]->is_complex()) header.data_type = DataType::CFloat32;
 
-    if (in_obj[i]->ndim() > header.axes.size()) header.axes.resize (in_obj[i]->ndim());
+    if (in_obj[i]->ndim() > header.ndim()) header.axes.set_ndim (in_obj[i]->ndim());
 
-    for (size_t n = 0; n < header.axes.size(); n++) { 
-      if (header.axes[n].dim != in_obj[i]->dim(n)) {
-        if (header.axes[n].dim < 2) header.axes[n] = in_obj[i]->header().axes[n];
+    for (int n = 0; n < header.ndim(); n++) { 
+      if (header.dim(n) != in_obj[i]->dim(n)) {
+        if (header.dim(n) < 2) header.axes.copy (n, in_obj[i]->header().axes, n);
         else if (in_obj[i]->dim(n) > 1) 
           throw Exception ("dimension mismatch between input files");
       }
@@ -71,31 +69,29 @@ EXECUTE {
   }
 
 
-  Image::Voxel out (*argument.back().get_image (header));
-  out.image.map();
+  Image::Position out (*argument.back().get_image (header));
 
-  ProgressBar::init (num_images*voxel_count(out), "multiplying...");
+  ProgressBar::init (num_images*out.voxel_count(), "multiplying...");
 
   for (int i = 0; i < num_images; i++) {
 
-    out.reset();
-    Image::Voxel in (*in_obj[i]);
-    in.image.map();
+    out.zero();
+    Image::Position in (*in_obj[i]);
 
     do {
 
-      for (size_t n = 0; n < in.ndim(); n++)
-        in[n] = in.dim(n) > 1 ? out[n] : 0;
+      for (int n = 0; n < in.ndim(); n++)
+        in.set (n, in.dim(n) > 1 ? out[n] : 0);
 
       if (out.is_complex()) {
-        cfloat c (1.0, 0.0);
+        Math::ComplexNumber<float> c (1.0, 0.0);
         if (i) c = out.Z();
-        if (in.is_complex()) c *= cfloat(in.Z());
-        out.Z() = c;
+        if (in.is_complex()) c *= in.Z();
+        out.Z (c);
       } 
       else {
         float val = i ? out.value() : 1.0;
-        out.value() = val * in.value();
+        out.value (val * in.value());
       }
 
       ProgressBar::inc();

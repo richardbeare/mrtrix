@@ -40,7 +40,7 @@ namespace MR {
         Gtk::Label           description_label;
         RefPtr<Image::Object> image;
         void*                widget;
-        mutable std::string       buf;
+        mutable String       buf;
 
         void                 on_browse ();
 

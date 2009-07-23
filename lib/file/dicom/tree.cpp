@@ -27,7 +27,10 @@
 
 */
 
-#include "file/path.h"
+#include <glibmm/fileutils.h>
+#include <glibmm/stringutils.h>
+#include <glibmm/miscutils.h>
+
 #include "file/dicom/element.h"
 #include "file/dicom/quick_scan.h"
 #include "file/dicom/image.h"
@@ -40,11 +43,11 @@ namespace MR {
   namespace File {
     namespace Dicom {
 
-      RefPtr<Patient> Tree::find (const std::string& patient_name, const std::string& patient_ID, const std::string& patient_DOB)
+      RefPtr<Patient> Tree::find (const String& patient_name, const String& patient_ID, const String& patient_DOB)
       {
         bool match;
 
-        for (uint n = 0; n < size(); n++) {
+        for (guint n = 0; n < size(); n++) {
           match = true;
           if (patient_name == (*this)[n]->name) {
             if (patient_ID.size() && (*this)[n]->ID.size()) 
@@ -66,14 +69,14 @@ namespace MR {
 
 
 
-      void Tree::read_dir (const std::string& filename)
+      void Tree::read_dir (const String& filename)
       {
         try { 
-          Path::Dir folder (filename); 
-          std::string entry;
+          Glib::Dir folder (filename); 
+          String entry;
           while ((entry = folder.read_name()).size()) {
-            std::string name (Path::join (filename, entry));
-            if (Path::is_dir (name)) read_dir (name);
+            String name (Glib::build_filename (filename, entry));
+            if (Glib::file_test (name, Glib::FILE_TEST_IS_DIR)) read_dir (name);
             else {
               try { read_file (name); }
               catch (Exception) { }
@@ -81,14 +84,14 @@ namespace MR {
             ProgressBar::inc();
           }
         }
-        catch (...) { throw Exception ("error opening DICOM folder \"" + filename + "\": " + strerror (errno)); }
+        catch (...) { throw Exception ("error opening DICOM folder \"" + filename + "\": " + Glib::strerror (errno)); }
       }
 
 
 
 
 
-      void Tree::read_file (const std::string& filename)
+      void Tree::read_file (const String& filename)
       {
         QuickScan reader;
         if (reader.read (filename)) {
@@ -116,7 +119,7 @@ namespace MR {
 
 
 
-      void Tree::read (const std::string& filename)
+      void Tree::read (const String& filename)
       {
         ProgressBar::init (0, "scanning DICOM folder \"" + filename + "\"");
         read_dir (filename);
@@ -135,7 +138,7 @@ namespace MR {
       std::ostream& operator<< (std::ostream& stream, const Tree& item)
       { 
         stream << "FileSet " << item.description << ":\n";
-        for (uint n = 0; n < item.size(); n++) stream << (*item[n]); 
+        for (guint n = 0; n < item.size(); n++) stream << (*item[n]); 
         return (stream);
       }
 

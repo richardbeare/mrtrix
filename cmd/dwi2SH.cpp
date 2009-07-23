@@ -21,11 +21,10 @@
 */
 
 #include "app.h"
-#include "progressbar.h"
-#include "image/voxel.h"
-#include "math/matrix.h"
-#include "math/SH.h"
+#include "image/position.h"
+#include "math/linalg.h"
 #include "dwi/gradient.h"
+#include "dwi/SH.h"
 
 using namespace std; 
 using namespace MR; 
@@ -61,7 +60,7 @@ ARGUMENTS = {
 
 
 OPTIONS = { 
-  Option ("grad", "supply gradient encoding", "specify the diffusion-weighted gradient scheme used in the acquisition. The program will normally attempt to use the encoding stored in image header.", Optional | AllowMultiple)
+  Option ("grad", "supply gradient encoding", "specify the diffusion-weighted gradient scheme used in the acquisition. The program will normally attempt to use the encoding stored in image header.", false, true)
     .append (Argument ("encoding", "gradient encoding", "the gradient encoding, supplied as a 4xN text file with each line is in the format [ X Y Z b ], where [ X Y Z ] describe the direction of the applied gradient, and b gives the b-value in units (1000 s/mm^2).").type_file ()),
 
   Option ("lmax", "maximum harmonic order", "set the maximum harmonic order for the output series. By default, the program will use the highest possible lmax given the number of diffusion-weighted images.")
@@ -77,17 +76,17 @@ EXECUTE {
   Image::Object &dwi_obj (*argument[0].get_image());
   Image::Header header (dwi_obj);
 
-  if (header.axes.size() != 4) 
+  if (header.ndim() != 4) 
     throw Exception ("dwi image should contain 4 dimensions");
 
-  Math::Matrix<float> grad;
+  Math::Matrix grad;
 
   std::vector<OptBase> opt = get_options (0);
   if (opt.size()) grad.load (opt[0][0].get_string());
   else {
-    if (!header.DW_scheme.is_set()) 
+    if (!header.DW_scheme.is_valid()) 
       throw Exception ("no diffusion encoding found in image \"" + header.name + "\"");
-    grad = header.DW_scheme;
+    grad.copy (header.DW_scheme);
   }
 
   if (grad.rows() < 7 || grad.columns() != 4) 
@@ -95,7 +94,7 @@ EXECUTE {
 
   info ("found " + str(grad.rows()) + "x" + str(grad.columns()) + " diffusion-weighted encoding");
 
-  if (header.axes[3].dim != (int) grad.rows()) 
+  if (header.dim(3) != (int) grad.rows()) 
     throw Exception ("number of studies in base image does not match that in encoding file");
 
   DWI::normalise_grad (grad);
@@ -104,8 +103,8 @@ EXECUTE {
   DWI::guess_DW_directions (dwis, bzeros, grad);
 
   {
-    std::string msg ("found b=0 images in studies [ ");
-    for (size_t n = 0; n < bzeros.size(); n++) msg += str(bzeros[n]) + " ";
+    String msg ("found b=0 images in studies [ ");
+    for (guint n = 0; n < bzeros.size(); n++) msg += str(bzeros[n]) + " ";
     msg += "]";
     info (msg);
   }
@@ -113,51 +112,48 @@ EXECUTE {
   info ("found " + str(dwis.size()) + " diffusion-weighted directions");
 
   opt = get_options (1);
-  int lmax = opt.size() ? opt[0][0].get_int() : Math::SH::LforN (dwis.size());
-  if (lmax > int(Math::SH::LforN (dwis.size()))) {
+  int lmax = opt.size() ? opt[0][0].get_int() : DWI::SH::LforN (dwis.size());
+  if (lmax > DWI::SH::LforN (dwis.size())) {
     info ("warning: not enough data to estimate spherical harmonic components up to order " + str(lmax));
-    lmax = Math::SH::LforN (dwis.size());
+    lmax = DWI::SH::LforN (dwis.size());
   }
   info ("calculating even spherical harmonic components up to order " + str(lmax));
 
-  Math::Matrix<float> dirs;
+  Math::Matrix dirs;
   DWI::gen_direction_matrix (dirs, grad, dwis);
-  Math::SH::Transform<float> SHT (dirs, lmax);
+  DWI::SH::Transform SHT (dirs, lmax);
 
 
-  header.axes[3].dim = Math::SH::NforL (lmax);
+  header.axes.dim[3] = DWI::SH::NforL (lmax);
   header.data_type = DataType::Float32;
 
-  Image::Voxel dwi (dwi_obj);
-  Image::Voxel sh (*argument[1].get_image (header));
+  Image::Position dwi (dwi_obj);
+  Image::Position sh (*argument[1].get_image (header));
 
 
-  Math::Vector<float> res (lmax);
-  Math::Vector<float> sigs (dwis.size());
+  DWI::SH::Coefs res (lmax);
+  Math::Vector sigs (dwis.size());
 
 
   bool normalise = get_options(2).size();
 
-  dwi.image.map();
-  sh.image.map();
-
   ProgressBar::init (dwi.dim(0)*dwi.dim(1)*dwi.dim(2), "converting DW images to SH coefficients...");
 
-  for (dwi[2] = sh[2] = 0; dwi[2] < dwi.dim(2); dwi[2]++, sh[2]++) {
-    for (dwi[1] = sh[1] = 0; dwi[1] < dwi.dim(1); dwi[1]++, sh[1]++) {
-      for (dwi[0] = sh[0] = 0; dwi[0] < dwi.dim(0); dwi[0]++, sh[0]++) {
+  for (dwi.set(2,0), sh.set(2,0); dwi[2] < dwi.dim(2); dwi.inc(2), sh.inc(2)) {
+    for (dwi.set(1,0), sh.set(1,0); dwi[1] < dwi.dim(1); dwi.inc(1), sh.inc(1)) {
+      for (dwi.set(0,0), sh.set(0,0); dwi[0] < dwi.dim(0); dwi.inc(0), sh.inc(0)) {
 
         double norm = 0.0;
         if (normalise) {
-          for (uint n = 0; n < bzeros.size(); n++) {
-            dwi[3] = bzeros[n];
+          for (guint n = 0; n < bzeros.size(); n++) {
+            dwi.set (3, bzeros[n]);
             norm += dwi.value ();
           }
           norm /= bzeros.size();
         }
 
-        for (uint n = 0; n < dwis.size(); n++) {
-          dwi[3] = dwis[n];
+        for (guint n = 0; n < dwis.size(); n++) {
+          dwi.set (3, dwis[n]);
           sigs[n] = dwi.value(); 
           if (sigs[n] < 0.0) sigs[n] = 0.0;
           if (normalise) sigs[n] /= norm;
@@ -165,8 +161,8 @@ EXECUTE {
 
         SHT.A2SH (res, sigs);
 
-        for (sh[3] = 0; sh[3] < sh.dim(3); sh[3]++)
-          sh.value() = res[sh[3]];
+        for (sh.set(3,0); sh[3] < sh.dim(3); sh.inc(3))
+          sh.value (res.V[sh[3]]);
 
         ProgressBar::inc();
       }

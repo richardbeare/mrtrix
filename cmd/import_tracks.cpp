@@ -55,15 +55,15 @@ EXECUTE {
   DWI::Tractography::Writer writer;
   writer.create (argument.back().get_string(), properties);
 
-  for (uint n = 0; n < argument.size()-1; n++) {
+  for (guint n = 0; n < argument.size()-1; n++) {
     Math::Matrix M;
     try { 
       M.load (argument[n].get_string()); 
       if (M.columns() != 3) 
-        throw Exception (std::string ("WARNING: file \"") + argument[n].get_string() + "\" does not contain 3 columns - ignored");
+        throw Exception (String ("WARNING: file \"") + argument[n].get_string() + "\" does not contain 3 columns - ignored");
 
       std::vector<Point> tck (M.rows());
-      for (uint i = 0; i < M.rows(); i++) {
+      for (guint i = 0; i < M.rows(); i++) {
         tck[i].set (M(i,0), M(i,1), M(i,2));
       }
       writer.append (tck);

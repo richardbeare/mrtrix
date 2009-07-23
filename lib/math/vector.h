@@ -1,448 +1,218 @@
 /*
-   Copyright 2008 Brain Research Institute, Melbourne, Australia
+    Copyright 2008 Brain Research Institute, Melbourne, Australia
 
-   Written by J-Donald Tournier, 19/05/09.
+    Written by J-Donald Tournier, 27/06/08.
 
-   This file is part of MRtrix.
+    This file is part of MRtrix.
 
-   MRtrix is free software: you can redistribute it and/or modify
-   it under the terms of the GNU General Public License as published by
-   the Free Software Foundation, either version 3 of the License, or
-   (at your option) any later version.
+    MRtrix is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
 
-   MRtrix is distributed in the hope that it will be useful,
-   but WITHOUT ANY WARRANTY; without even the implied warranty of
-   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-   GNU General Public License for more details.
+    MRtrix is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
 
-   You should have received a copy of the GNU General Public License
-   along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
+    You should have received a copy of the GNU General Public License
+    along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
 #ifndef __math_vector_h__
 #define __math_vector_h__
 
-#include <fstream>
 #include <gsl/gsl_vector.h>
-#include <gsl/gsl_vector_float.h>
-
-#include "mrtrix.h"
-#include "math/math.h"
-
-#define LOOP(op) for (size_t i = 0; i < GSLVector<T>::size; i++) { op; }
+#include "math/matrix.h"
 
 namespace MR {
   namespace Math {
-    
-#ifndef DOXYGEN_SHOULD_SKIP_THIS
 
-    template <typename T> class GSLVector;
-    template <> class GSLVector <float> : public gsl_vector_float { public: void set (float* p) { data = p; } };
-    template <> class GSLVector <double> : public gsl_vector { public: void set (double* p) { data = p; } };
-
-    template <typename T> class GSLBlock;
-    template <> class GSLBlock <float> : public gsl_block_float {
-      public: 
-	static gsl_block_float* alloc (size_t n) { return (gsl_block_float_alloc (n)); }
-	static void free (gsl_block_float* p) { gsl_block_float_free (p); }
-    };
-    template <> class GSLBlock <double> : public gsl_block { 
-      public: 
-	static gsl_block* alloc (size_t n) { return (gsl_block_alloc (n)); }
-	static void free (gsl_block* p) { gsl_block_free (p); }
-    };
-
-#endif /* DOXYGEN_SHOULD_SKIP_THIS */
-
-
-
-
-    /** @defgroup linalg Linear Algebra
-      Provides classes and function to perform basic linear algebra operations.
-      The main classes are the Vector and Matrix class, and their associated views.
-
-      @{ */
-
-    //! provides access to data as a vector
-    /** \note this class is not capable of managing its own data allocation. 
-      See the Vector class for a more general interface. */
-    template <typename T> class VectorView : protected GSLVector<T>
-    {
-      public:
-        template <typename U> friend class VectorView;
-
-	//! construct from existing data array
-        VectorView (T* vector_data, size_t nelements, size_t skip = 1)
-        { 
-	  GSLVector<T>::size = nelements;
-	  GSLVector<T>::stride = skip;
-	  GSLVector<T>::set (vector_data);
-	  GSLVector<T>::block = NULL;
-	  GSLVector<T>::owner = 0;
-        }
-
-	//! write to text file \a filename
-        void save (const std::string& filename) const {   
-          std::ofstream out (filename.c_str()); 
-          if (!out) throw Exception ("cannot open matrix file \"" + filename + "\": " + strerror (errno)); 
-          out << *this; 
-        }
-
-	//! used to obtain a pointer to the underlying GSL structure
-	GSLVector<T>* operator& () { return (this); }
-	//! used to obtain a pointer to the underlying GSL structure
-        const GSLVector<T>* operator& () const { return (this); }
-
-	//! true if vector points to existing data
-        bool       is_set () const throw () { return (ptr()); }
-	//! returns number of elements of vector
-        size_t     size () const throw ()  { return (GSLVector<T>::size); }
-
-	//! returns a reference to the element at \a i
-        T&        operator[] (size_t i) throw ()          { return (ptr()[i*GSLVector<T>::stride]); }
-	//! returns a reference to the element at \a i
-        const T&  operator[] (size_t i) const throw ()    { return (ptr()[i*GSLVector<T>::stride]); }
-
-	//! assign the specified \a value to all elements of the vector
-        VectorView& operator= (T value) throw () { LOOP (operator[](i) = value); return (*this); }   
-	//! assign the values in \a V to the corresponding elements of the vector
-        VectorView& operator= (const VectorView& V) { assert (GSLVector<T>::size == V.GSLVector<T>::size); LOOP (operator[](i) = V[i]); return (*this); }
-	//! assign the values in \a V to the corresponding elements of the vector
-        template <typename U> VectorView& operator= (const VectorView<U>& V) { assert (GSLVector<T>::size == V.GSLVector<T>::size); LOOP (operator[](i) = V[i]); return (*this); }
-
-
-	//! set all elements of vector to zero
-        VectorView& zero () throw () { LOOP (operator[](i) = 0.0); return (*this); }
-	//! swap contents with \a V without copying
-        void swap (VectorView& V) throw () { 
-          char c [sizeof (VectorView)];
-          memcpy (&c, this, sizeof (VectorView));
-          memcpy (this, &V, sizeof (VectorView));
-          memcpy (&V, &c, sizeof (VectorView));
-        } 
-
-	//! add \a value to all elements of the vector
-        VectorView& operator+= (T value) throw () { LOOP (operator[](i) += value); return (*this); } 
-	//! subtract \a value from all elements of the vector
-        VectorView& operator-= (T value) throw () { LOOP (operator[](i) -= value); return (*this); }   
-	//! multiply all elements of the vector by \a value
-        VectorView& operator*= (T value) throw () { LOOP (operator[](i) *= value); return (*this); }   
-	//! divide all elements of the vector by \a value
-        VectorView& operator/= (T value) throw () { LOOP (operator[](i) /= value); return (*this); }   
-
-	//! add each element of \a V to the corresponding element of the vector
-        VectorView& operator+= (const VectorView& V) throw () { LOOP (operator[](i) += V[i]); return (*this); }   
-	//! subtract each element of \a V from the corresponding element of the vector
-        VectorView& operator-= (const VectorView& V) throw () { LOOP (operator[](i) -= V[i]); return (*this); }
-	//! multiply each element of \a V by the corresponding element of the vector
-        VectorView& operator*= (const VectorView& V) throw () { LOOP (operator[](i) *= V[i]); return (*this); }
-	//! divide each element of \a V by the corresponding element of the vector
-        VectorView& operator/= (const VectorView& V) throw () { LOOP (operator[](i) /= V[i]); return (*this); }
-
-	//! return a VectorView corresponding to a subvector of the vector
-        VectorView view (size_t from, size_t to) throw () { 
-          assert (from <= to && to <= size());
-          return (VectorView (ptr() + from*GSLVector<T>::stride, to-from, GSLVector<T>::stride));
-        }
-
-	//! return a VectorView corresponding to a subvector of the vector
-        const VectorView view (size_t from, size_t to) const throw () { 
-          assert (from <= to && to <= size());
-          return (VectorView (ptr() + from*GSLVector<T>::stride, to-from, GSLVector<T>::stride));
-        }
-
-	//! return a VectorView corresponding to a subvector of the vector
-        VectorView view (size_t from, size_t to, size_t skip) throw () { 
-          assert (from <= to && to <= size());
-          return (VectorView (ptr() + from*GSLVector<T>::stride, ceil<size_t> ((to-from)/float(skip)), GSLVector<T>::stride*skip));
-        }
-
-	//! return a VectorView corresponding to a subvector of the vector
-        const VectorView view (size_t from, size_t to, size_t skip) const throw () { 
-          assert (from <= to && to <= size());
-          return (VectorView (ptr() + from*GSLVector<T>::stride, ceil<size_t> ((to-from)/float(skip)), GSLVector<T>::stride*skip));
-        }
-
-	//! resize the vector to have size \a nelements
-	/** \note no bounds checking and no data allocation/deallocation/copying is performed by this function. */
-        VectorView& resize (size_t nelements) { GSLVector<T>::size = nelements; return (*this); }
-	//! resize the vector to refer to the subvector specified
-	/** \note no bounds checking and no data allocation/deallocation/copying is performed by this function. */
-        VectorView& resize (size_t from, size_t to) { ptr() += from*GSLVector<T>::stride; GSLVector<T>::size = to-from; return (*this); }
-
-	//! return a pointer to the underlying data
-        T* ptr () throw () { return ((T*) (GSLVector<T>::data)); }
-	//! return a pointer to the underlying data
-        const T* ptr () const throw () { return ((const T*) (GSLVector<T>::data)); }
-	//! return the stride of the vector
-        size_t stride () const throw () { return (GSLVector<T>::stride); }
-
-	//! write the vector \a V to \a stream as text
-        friend std::ostream& operator<< (std::ostream& stream, const VectorView& V)  {
-          for (size_t i = 0; i < V.size(); i++) stream << V[i] << "\n"; 
-          return (stream); 
-        }
-
+    class Vector {
       protected:
-        VectorView () { 
-	  GSLVector<T>::size = 0;
-	  GSLVector<T>::stride = 0;
-	  GSLVector<T>::data = NULL;
-	  GSLVector<T>::block = NULL;
-	  GSLVector<T>::owner = 0;
-        }
+        gsl_vector*   V;
 
-    };
-
-
-    //! The main vector class 
-    template <typename T> class Vector : public VectorView<T> { 
       public:
-        template <typename U> friend class Vector; 
+        Vector ();
+        Vector (guint size);
+        Vector (const Vector& vec);
+        ~Vector ();
 
-	//! construct empty vector
-        Vector () throw () { } 
-	//! construct vector of size \a nelements
-	/** \note the elements of the vector are left uninitialised. */
-        Vector (size_t nelements) {   
-	  GSLVector<T>::block = GSLBlock<T>::alloc (nelements);
-          if (!GSLVector<T>::block) throw Exception ("Failed to allocate memory for Vector data");  
-	  GSLVector<T>::size = nelements; GSLVector<T>::stride = 1; GSLVector<T>::data = GSLVector<T>::block->data; GSLVector<T>::owner = 1;
-        }
-	//! construct a vector by copying the elements of \a V
-        Vector (const Vector& V) {   
-          if (V.size()) {
-	    GSLVector<T>::block = GSLBlock<T>::alloc (V.size());
-            if (!GSLVector<T>::block) throw Exception ("Failed to allocate memory for Vector data");  
-	    GSLVector<T>::data = GSLVector<T>::block->data; GSLVector<T>::size = V.size(); GSLVector<T>::stride = 1; GSLVector<T>::owner = 1;
-            view() = V.view();
-          }
-        }
-	//! construct a vector by copying the elements of \a V
-        template <typename U> Vector (const Vector<U>& V) {
-          if (V.size()) {
-	    GSLVector<T>::block = GSLBlock<T>::alloc (V.size());
-            if (!GSLVector<T>::block) throw Exception ("Failed to allocate memory for Vector data");  
-	    GSLVector<T>::data = GSLVector<T>::block->data; GSLVector<T>::size = V.size(); GSLVector<T>::stride = 1; GSLVector<T>::owner = 1;
-            view() = V.view();
-          }
-        }
+        Vector&       operator= (const Vector& vec);
 
-	//! construct a vector by reading from the text file \a filename
-        Vector (const std::string& file) { load (file); } 
-	//! destructor
-        ~Vector () { if (GSLVector<T>::block) delete [] GSLVector<T>::block; } 
+        guint         size () const;
+        bool          is_valid () const;
+        void          allocate (const Vector& vec);
+        void          allocate (guint num_elements);
+        void          copy (const Vector& vec);
+        void          copy (const gsl_vector* vec);
+        void          set_all (double value);
+        void          reset ();
+        void          zero ();
+        void          zero (guint num_elements);
+        double&       operator[] (guint i) const;
+        gsl_vector*   get_gsl_vector () const;
+        void          set_gsl_vector (gsl_vector* vec);
+        gsl_vector*   disown_gsl_vector ();
 
-	//! assignment operator: allocate vector to have the same size as \a V, and copy contents from \a V
-        Vector&   operator= (const Vector<T>& V) { return (operator= (V.view())); }
-	//! assignment operator: allocate vector to have the same size as \a V, and copy contents from \a V
-        Vector&   operator= (const VectorView<T>& V) { allocate (V); view() = V; return (*this); }
-	//! assignment operator: allocate vector to have the same size as \a V, and copy contents from \a V
-        template <typename U> Vector& operator= (const Vector<U>& V) { return (operator= (V.view())); }
-	//! assignment operator: allocate vector to have the same size as \a V, and copy contents from \a V
-        template <typename U> Vector& operator= (const VectorView<U>& V) { allocate (V); view() = V; return (*this); }
+        double        min () const;
+        guint         min_index () const;
+        double        max () const;
+        guint         max_index () const;
 
-	//! allocate the vector to have the same size as \a V
-        Vector& allocate (const VectorView<T>& V) { return (allocate (V.size())); } 
-	//! allocate the vector to have the same size as \a V
-        template <typename U> Vector& allocate (const Vector<U>& V) { return (allocate (V.size())); }
-	//! allocate the vector to have size \a nelements
-        Vector& allocate (size_t nelements) {
-          if (GSLVector<T>::block) {
-            if (GSLVector<T>::block->size < nelements) {
-	      GSLBlock<T>::free (GSLVector<T>::block);
-	      GSLVector<T>::block = NULL;
-            }
-          }
-          if (!GSLVector<T>::block && nelements) {
-            GSLVector<T>::block = GSLBlock<T>::alloc (nelements);
-            if (!GSLVector<T>::block) throw Exception ("Failed to allocate memory for Vector data");
-          }
-	  GSLVector<T>::size = nelements; GSLVector<T>::stride = 1;
-          GSLVector<T>::data = GSLVector<T>::block ? GSLVector<T>::block->data : NULL;
-          return (*this);
-        }
+        void          load (const String& filename);
+        void          save (const String& filename) const;
 
-	//! resize vector to have size \a nelements
-        Vector<T>& resize (size_t nelements) {
-          if (nelements <= GSLVector<T>::size) { GSLVector<T>::size = nelements; return (*this); }
-          if (GSLVector<T>::block)
-            if ((nelements-1)*GSLVector<T>::stride + 1 <= GSLVector<T>::block->size) { GSLVector<T>::size = nelements; return (*this); }
-          Vector<T> V (nelements);
-          size_t n = MIN(GSLVector<T>::size, nelements);
-          V.VectorView<T>::view(0,n) = VectorView<T>::view(0,n);
-          clear();
-          swap (V);
-          return (*this);
-        }
+        void          normalise ();
+        double        magnitude () const;
+        double        norm2 () const;
+        double        mean () const;
+        double        sum () const;
+        double        dot (const Vector& vec) const;
+        double        dot (const Matrix& M, guint row) const;
 
-	//! deallocate the vector data
-        Vector<T>& clear () {
-          if (GSLVector<T>::block) delete [] GSLVector<T>::block;
-	  GSLVector<T>::size = GSLVector<T>::stride = 0; GSLVector<T>::data = NULL; GSLVector<T>::block = NULL; GSLVector<T>::owner = 0; return (*this); 
-        }
+        void          add (const Vector& vec);
+        void          add (double d, const Vector& vec); // x' = x + d*vec
+        void          sub (const Vector& vec);
+        void          div (const Vector& vec);
 
-	//! return as VectorView class
-        VectorView<T>& view () { return (*this); }
-	//! return as VectorView class
-        const VectorView<T>& view () const { return (*this); }
+        void          multiply (double val);
+        void          multiply (const Matrix& M, const Vector& vec);
+        void          multiply (const Matrix& M, const gsl_vector* vec);
+        void          multiply_trans (const Matrix& M, const Vector& vec);
+        void          multiply_trans (const Matrix& M, const gsl_vector* vec);
 
-	//! return a VectorView corresponding to a subvector of the vector
-        VectorView<T> view (size_t from, size_t to, size_t skip = 1) throw () { return (VectorView<T>::view (from, to, skip)); }
-	//! return a VectorView corresponding to a subvector of the vector
-        const VectorView<T> view (size_t from, size_t to, size_t skip = 1) const throw () { return (VectorView<T>::view (from, to, skip)); }
+        void          print () const;
 
-	//! read vector data from the text file \a filename
-        Vector<T>& load (const std::string& filename) { 
-          std::ifstream in (filename.c_str()); 
-          if (!in) throw Exception ("cannot open matrix file \"" + filename + "\": " + strerror (errno)); 
-          try { 
-            in >> *this; 
-          }
-          catch (Exception E) { 
-            throw Exception ("error loading matrix file \"" + filename + "\":" + E.description); 
-          }
-          return (*this);
-        }
-
-	//! read the vector data from \a stream and assign to the vector \a V
-        friend std::istream& operator>> (std::istream& stream, Vector<T>& V)  
-        {
-          std::vector<T> vec;
-          while (true) {
-            T val;
-            stream >> val;
-            if (stream.good()) vec.push_back (val);
-            else break;
-          }
-
-          V.allocate (vec.size());
-          for (size_t n = 0; n < V.size(); n++) V[n] = vec[n];
-          return (stream);
-        }
+        friend std::ostream& operator<< (std::ostream& stream, const Vector& vec);
     };
 
+    void  normalise (float *v);
+    void  normalise (float &v1, float &v2, float &v3);
+    float magnitude (const float *v);
+    float magnitude (float v1, float v2, float v3);
+    void  cross_product (float *a, const float *b, const float *c);
+    float dot_product (const float *a, const float *b);
 
 
 
-    /** @defgroup vector Vector functions
-      @{ */
-
-    //! compute the squared 2-norm of a vector
-    template <typename T> inline T norm2 (const T* V, size_t size = 3, size_t stride = 1) {
-      T n = 0.0; 
-      for (size_t i = 0; i < size; i++) n += pow2(V[i*stride]); 
-      return (n);
-    }
-
-    //! compute the squared 2-norm of a vector
-    template <typename T> inline T norm2 (const VectorView<T>& V) { return (norm2 (V.ptr(), V.size(), V.stride())); }
-
-    //! compute the 2-norm of a vector
-    template <typename T> inline T norm (const T* V, size_t size = 3, size_t stride = 1) { return (sqrt(norm2(V, size, stride))); }
-
-    //! compute the 2-norm of a vector
-    template <typename T> inline T norm (const VectorView<T>& V) { return (norm(V.ptr(), V.size(), V.stride())); }
-
-    //! compute the squared 2-norm of the difference between two vectors
-    template <typename T> inline T norm_diff2 (const T* x, const T* y, size_t size = 3, size_t x_stride = 1, size_t y_stride = 1) 
-    {
-      T n = 0.0; 
-      for (size_t i = 0; i < size; i++) n += pow2(x[i*x_stride] - y[i*y_stride]); 
-      return (n);
-    }
-
-    //! compute the squared 2-norm of the difference between two vectors
-    template <typename T> inline T norm_diff2 (const VectorView<T>& x, const VectorView<T>& y) {
-      return (norm_diff2 (x.ptr(), y.ptr(), x.size(), x.stride(), y.stride()));
-    }
-
-    //! compute the mean of the elements of a vector
-    template <typename T> inline T mean (const T* V, size_t size = 3, size_t stride = 1) {
-      T n = 0.0; 
-      for (size_t i = 0; i < size; i++) n += V[i*stride];
-      return (n/size); 
-    }
-
-    //! compute the mean of the elements of a vector
-    template <typename T> inline T mean (const VectorView<T>& V) { return (mean(V.ptr(), V.size(), V.stride())); }
-
-    //! normalise a vector to have unit 2-norm
-    template <typename T> inline void normalise (T* V, size_t size = 3, size_t stride = 1) {
-      T n = norm(V, size);
-      for (size_t i = 0; i < size; i++) V[i*stride] /= n;
-    }
-
-    //! normalise a vector to have unit 2-norm
-    template <typename T> inline VectorView<T> normalise (VectorView<T>& V) { normalise (V.ptr(), V.size(), V.stride()); return (V); }
-
-    //! compute the dot product between two vectors
-    template <typename T> inline T dot (const T* x, const T* y, size_t size = 3, size_t x_stride = 1, size_t y_stride = 1) 
-    {
-      T retval = 0.0;
-      for (size_t i = 0; i < size; i++) retval += x[i*x_stride] * y[i*y_stride];
-      return (retval);
-    }
-
-    //! compute the dot product between two vectors
-    template <typename T> inline T dot (const VectorView<T>& x, const VectorView<T>& y) { return (dot (x.ptr(), y.ptr(), x.size(), x.stride(), y.stride())); }
-
-    //! compute the cross product between two vectors
-    template <typename T> inline void cross (T* c, const T* x, const T* y, size_t c_stride = 1, size_t x_stride = 1, size_t y_stride = 1) 
-    {
-      c[0] = x[x_stride]*y[2*y_stride] - x[2*x_stride]*y[y_stride];
-      c[c_stride] = x[2*x_stride]*y[0] - x[0]*y[2*y_stride];
-      c[2*c_stride] = x[0]*y[y_stride] - x[x_stride]*y[0];
-    }
-
-    //! compute the cross product between two vectors
-    template <typename T> inline VectorView<T> cross (VectorView<T> c, const VectorView<T>& x, const VectorView<T>& y) { 
-      cross (c.ptr(), x.ptr(), y.ptr(), c.stride(), x.stride(), y.stride()); 
-      return (c); 
-    }
 
 
-    //! find the maximum value of any elements within a vector
-    template <typename T> inline T max (const VectorView<T>& V, size_t& i) 
-    {
-      T val (V[0]);
-      i = 0;
-      for (size_t j = 0; j < V.size(); j++) {
-        if (val < V[j]) { val = V[j]; i = j; }
-      }
-      return (val);
-    }
-
-    //! find the minimum value of any elements within a vector
-    template <typename T> inline T min (const VectorView<T>& V, size_t& i) 
-    {
-      T val (V[0]);
-      i = 0;
-      for (size_t j = 0; j < V.size(); j++) {
-        if (val > V[j]) { val = V[j]; i = j; }
-      }
-      return (val);
-    }
 
 
-    //! find the maximum absolute value of any elements within a vector
-    template <typename T> inline T absmax (const VectorView<T>& V, size_t& i) 
-    {
-      T val (abs(V[0]));
-      i = 0;
-      for (size_t j = 0; j < V.size(); j++) {
-        if (val < abs(V[j])) { val = abs(V[j]); i = j; }
-      }
-      return (val);
-    }
+
+
+
+
+
+
+
+
+    inline void  normalise (float *v)    { float a; a = sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]); v[0] /= a; v[1] /= a; v[2] /= a; }
+    inline void  normalise (float &v1, float &v2, float &v3) { float a; a = sqrt(v1*v1+v2*v2+v3*v3); v1 /= a; v2 /= a; v3 /= a; }
+    inline float magnitude (const float *v)                   { return (sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])); }
+    inline float magnitude (float v1, float v2, float v3)     { return (sqrt(v1*v1+v2*v2+v3*v3)); }
+    inline void  cross_product (float *a, const float *b, const float *c) { a[0] = b[1]*c[2]-b[2]*c[1]; a[1] = b[2]*c[0]-b[0]*c[2]; a[2] = b[0]*c[1]-b[1]*c[0]; }
+    inline float dot_product (const float *a, const float *b)  { return (a[0]*b[0]+a[1]*b[1]+a[2]*b[2]); }
 
     /** @} */
 
-    /** @} */
-  }
+
+
+    inline Vector::Vector ()                               { V = NULL; }
+    inline Vector::Vector (guint num_elements)             { V = gsl_vector_alloc (num_elements); }
+    inline Vector::Vector (const Vector& vec)              { V = NULL; copy (vec); }
+    inline Vector::~Vector ()                              { if (V) gsl_vector_free (V); }
+    inline Vector& Vector::operator= (const Vector& vec)   { copy (vec); return (*this); }
+    inline void Vector::allocate (const Vector& vec)       { allocate (vec.size()); }
+    inline void Vector::copy (const Vector &vec)           { copy (vec.V); }
+    inline void Vector::copy (const gsl_vector* vec)       { allocate (vec->size); gsl_vector_memcpy (V, vec); }
+    inline void Vector::reset ()                           { if (V) gsl_vector_free (V); V = NULL; }
+    inline void Vector::set_all (double value)             { if (V) gsl_vector_set_all (V, value); }
+
+    inline guint Vector::size () const                            { if (V) return (V->size); else return (0); }
+    inline bool Vector::is_valid () const                         { return (V); }
+    inline void Vector::zero ()                                   { if (V) gsl_vector_set_zero (V); }
+    inline void Vector::zero (guint num_elements)                 { allocate (num_elements); zero(); }
+    inline double &Vector::operator[] (guint i) const             { return (V->data[i * V->stride]); }
+    inline gsl_vector *Vector::get_gsl_vector () const            { return (V); }
+    inline void Vector::set_gsl_vector (gsl_vector* vec)          { if (V) gsl_vector_free (V); V = vec; }
+    inline gsl_vector* Vector::disown_gsl_vector ()               { gsl_vector* vec = V; V = NULL; return(vec); }
+    inline double Vector::min () const                            { if (V) return (gsl_vector_min (V)); else return (NAN); }
+    inline guint   Vector::min_index () const                     { if (V) return (gsl_vector_min_index (V)); else return (0); }
+    inline double Vector::max () const                            { if (V) return (gsl_vector_max (V)); else return (NAN); }
+    inline guint   Vector::max_index () const                     { if (V) return (gsl_vector_max_index (V)); else return (0); }
+    inline double Vector::magnitude () const                      { return (sqrt(norm2())); }
+
+    inline void Vector::normalise ()                              { multiply (1.0/magnitude()); }
+
+    inline double Vector::norm2 () const
+    {
+      double val = 0.0;
+      for (guint i = 0; i < size(); i++) val += (*this)[i] * (*this)[i];
+      return (val);
+    }
+
+    inline double Vector::mean () const                           { return (sum()/size()); }
+    inline double Vector::sum () const
+    {
+      double val = 0.0;
+      for (guint i = 0; i < size(); i++) val += (*this)[i];
+      return (val);
+    }
+
+    inline double Vector::dot (const Vector& vec) const
+    {
+      double val = 0.0;
+      for (guint i = 0; i < size(); i++) val += (*this)[i] * vec[i];
+      return (val);
+    }
+    inline double Vector::dot (const Matrix& M, guint row) const
+    {
+      double val = 0.0;
+      for (guint i = 0; i < size(); i++) val += (*this)[i] * M(row, i);
+      return (val);
+    }
+
+    inline void Vector::add (const Vector& vec)                   { if (gsl_vector_add (V, vec.V)) throw Exception("vector"); }
+    inline void Vector::add (double d, const Vector& vec)
+    {
+      if (!V) throw Exception ("vector");
+      if (size() != vec.size()) throw Exception ("vector");
+      for (guint n = 0; n < size(); n++)
+        (*this)[n] += d*vec[n];
+    }
+
+    inline void Vector::sub (const Vector& vec)                   { if (gsl_vector_sub (V, vec.V)) throw Exception ("vector"); }
+    inline void Vector::div (const Vector& vec)                   { if (gsl_vector_div (V, vec.V)) throw Exception ("vector"); }
+    inline void Vector::multiply (double val)                     { if (gsl_vector_scale (V, val)) throw Exception ("vector"); }
+    inline void Vector::multiply (const Matrix& M, const Vector& vec) { multiply (M, vec.V); }
+    inline void Vector::multiply (const Matrix& M, const gsl_vector* vec)
+    {
+      allocate (M.rows());
+      if (gsl_blas_dgemv (CblasNoTrans, 1.0, M.get_gsl_matrix(), vec, 0.0, V)) throw Exception ("vector");
+    }
+
+    inline void Vector::multiply_trans (const Matrix& M, const Vector& vec) { multiply_trans (M, vec.V); }
+    inline void Vector::multiply_trans (const Matrix& M, const gsl_vector* vec)
+    {
+      allocate (M.columns());
+      if (gsl_blas_dgemv (CblasTrans, 1.0, M.get_gsl_matrix(), vec, 0.0, V)) throw Exception ("vector");
+    }
+
+    inline void Vector::allocate (guint num_elements)
+    {
+      if (V) {
+        if (size() == num_elements) return;
+        gsl_vector_free (V);
+      }
+      V = gsl_vector_alloc (num_elements);
+    }
+
+}
 }
 
-#undef LOOP
 
 #endif
+
