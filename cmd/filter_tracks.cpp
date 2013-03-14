@@ -19,6 +19,7 @@
     along with MRtrix.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+#include <omp.h>
 
 #include "app.h"
 #include "image/interp.h"
@@ -29,10 +30,10 @@
 #include "dwi/tractography/tracker/base.h"
 
 
-using namespace std; 
-using namespace MR; 
-using namespace MR::DWI; 
-using namespace MR::DWI::Tractography; 
+using namespace std;
+using namespace MR;
+using namespace MR::DWI;
+using namespace MR::DWI::Tractography;
 
 SET_VERSION_DEFAULT;
 
@@ -69,6 +70,14 @@ OPTIONS = {
 
   Option ("nomaskinterp", "no interpolation of mask regions", "do NOT perform tri-linear interpolation of mask images."),
 
+  Option ("seed", "seed region",
+      "specify the seed region of interest. Probably only makes sense with unidirectional whole brain tracking", false, true)
+    .append (Argument ("spec", "ROI specification",
+          "specifies the parameters necessary to define the ROI. This should be "
+          "either the path to a binary mask image, or a comma-separated list of "
+          "4 floating-point values, specifying the [x,y,z] coordinates of the "
+          "centre and radius of a spherical ROI.").type_string()),
+
   Option::End
 };
 
@@ -98,20 +107,24 @@ class ROI_filter {
           switch (roi.type) {
 
             case ROI::Seed:
-              throw Exception ("filter_tracks should not receive any seed regions");
-
+              //throw Exception ("filter_tracks should not receive any seed regions");
+              if (roi.mask.empty())
+                spheres.seed.push_back(Tracker::Base::Sphere (roi.position, roi.radius));
+              else
+                masks.seed.push_back(Tracker::Base::Mask   (*roi.mask_object, no_mask_interp));
+              break;
             case ROI::Include:
               if (roi.mask.empty())
                 spheres.include.push_back (Tracker::Base::Sphere (roi.position, roi.radius));
               else
-                masks  .include.push_back (Tracker::Base::Mask   (*roi.mask_object, no_mask_interp));
+                masks.include.push_back (Tracker::Base::Mask   (*roi.mask_object, no_mask_interp));
               break;
 
             case ROI::Exclude:
               if (roi.mask.empty())
                 spheres.exclude.push_back (Tracker::Base::Sphere (roi.position, roi.radius));
               else
-                masks  .exclude.push_back (Tracker::Base::Mask   (*roi.mask_object, no_mask_interp));
+                masks.exclude.push_back (Tracker::Base::Mask   (*roi.mask_object, no_mask_interp));
               break;
 
             case ROI::Mask:
@@ -125,7 +138,7 @@ class ROI_filter {
 
       }
 
-    bool accept_track (const std::vector<Point>& tck) { 
+    bool accept_track (const std::vector<Point>& tck) {
       bool match = check_track (tck);
       return invert ? !match : match;
     }
@@ -133,35 +146,79 @@ class ROI_filter {
 
     bool check_track (const std::vector<Point>& tck)
     {
-      if (min_num_points > 0) 
-        if (tck.size() < guint (min_num_points)) 
+      if (min_num_points > 0)
+        if (tck.size() < guint (min_num_points))
           return false;
 
       for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.include.begin(); i != spheres.include.end(); ++i)
         i->included = false;
-      for (std::vector<Tracker::Base::Mask  >::iterator i = masks  .include.begin(); i != masks  .include.end(); ++i)
+      for (std::vector<Tracker::Base::Mask  >::iterator i = masks.include.begin(); i != masks.include.end(); ++i)
         i->included = false;
 
+      // check seeds first
+      std::vector<Point>::const_iterator startpoint = tck.begin();
+      
+      for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.seed.begin(); i != spheres.seed.end(); ++i)
+        if (!(i->contains (*startpoint))) return false;
+
+      for (std::vector<Tracker::Base::Mask  >::iterator i = masks.seed.begin(); i != masks.seed.end(); ++i)
+        if (!(i->contains (*startpoint))) return false;
+
+#if 1
       for (std::vector<Point>::const_iterator pos = tck.begin(); pos != tck.end(); ++pos) {
 
         for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.exclude.begin(); i != spheres.exclude.end(); ++i)
           if (i->contains (*pos)) return false;
 
-        for (std::vector<Tracker::Base::Mask  >::iterator i = masks  .exclude.begin(); i != masks  .exclude.end(); ++i)
+        for (std::vector<Tracker::Base::Mask  >::iterator i = masks.exclude.begin(); i != masks.exclude.end(); ++i)
           if (i->contains (*pos)) return false;
 
         for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.include.begin(); i != spheres.include.end(); ++i)
           if (!i->included && i->contains (*pos)) i->included = true;
 
-        for (std::vector<Tracker::Base::Mask  >::iterator i = masks  .include.begin(); i != masks  .include.end(); ++i)
+        for (std::vector<Tracker::Base::Mask  >::iterator i = masks.include.begin(); i != masks.include.end(); ++i)
           if (!i->included && i->contains (*pos)) i->included = true;
 
       }
+#else
+      // open MP version - not right as the i->included should be
+      // shared
+      // makes only a minor difference, so don't pursue this
+      bool abort = false;
+#pragma omp parallel for
+      for (unsigned int p = 0; p < tck.size(); ++p) 
+	{
+	
+#pragma omp flush (abort)
+	if (!abort)
+	  {
+	  for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.exclude.begin(); i != spheres.exclude.end(); ++i)
+	    if (i->contains (tck[p]))
+	      {
+	      abort=true;
+#pragma omp flush (abort)
+	      }
+	  for (std::vector<Tracker::Base::Mask  >::iterator i = masks.exclude.begin(); i != masks.exclude.end(); ++i)
+	    if (i->contains (tck[p])) 
+	      {
+	      abort=true;
+#pragma omp flush (abort)
+	      }
+	  
+	  for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.include.begin(); i != spheres.include.end(); ++i)
+	    if (!i->included && i->contains (tck[p])) i->included = true;
+	  
+	  for (std::vector<Tracker::Base::Mask  >::iterator i = masks.include.begin(); i != masks.include.end(); ++i)
+	    if (!i->included && i->contains (tck[p])) i->included = true;
+	  }
+      }
+      if (abort) return false;
 
+#endif
       for (std::vector<Tracker::Base::Sphere>::iterator i = spheres.include.begin(); i != spheres.include.end(); ++i)
         if (!i->included) return false;
 
-      for (std::vector<Tracker::Base::Mask  >::iterator i = masks  .include.begin(); i != masks  .include.end(); ++i)
+      for (std::vector<Tracker::Base::Mask  >::iterator i = masks.include.begin(); i != masks.include.end(); ++i)
         if (!i->included) return false;
 
       return true;
@@ -207,9 +264,9 @@ EXECUTE
   int min_num_points = -1;
   if (opt.size()) {
     float step_size = 1.0;
-    if (properties["step_size"].empty()) 
+    if (properties["step_size"].empty())
       error ("WARNING: no step size defined in track file header - assuming 1 mm");
-    else 
+    else
       step_size = to<float> (properties["step_size"]);
 
     min_num_points = (int) ceil (opt[0][0].get_float() / step_size);
@@ -220,10 +277,17 @@ EXECUTE
   opt = get_options (4); // nomaskinterp
   properties["no_mask_interp"] = opt.size() ? "1" : "0"; // need to override any existing property entry
 
+  opt = get_options(5); // seed
+  for (std::vector<OptBase>::iterator i = opt.begin(); i != opt.end(); ++i)
+    properties.roi.push_back (RefPtr<ROI> (new ROI (ROI::Seed, (*i)[0].get_string())));
+
+
+
   ROI_filter filter (properties, min_num_points, invert);
   writer.create (argument[1].get_string(), properties);
 
   std::vector<Point> tck;
+  // this might be the place to put any openMP stuff
   while (reader.next (tck)) {
     ++writer.total_count;
     if (filter.accept_track (tck))
