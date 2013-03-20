@@ -289,7 +289,7 @@ namespace MR {
 
       void DP_ROIList::on_tick (const String& path) { Window::Main->update (&parent); }
       
-      bool DP_ROIList::on_button_press (GdkEventButton* event, float brush) 
+    bool DP_ROIList::on_button_press (GdkEventButton* event, float brush, bool brush3d) 
       {
         Gtk::TreeModel::iterator iter = get_selection()->get_selected();
         if (!iter) return (false);
@@ -304,7 +304,7 @@ namespace MR {
         set = state == GDK_SHIFT_MASK;
         editing = true;
 
-        process (event->x, event->y, brush);
+        process (event->x, event->y, brush, brush3d);
         return (true);
       }
 
@@ -314,7 +314,7 @@ namespace MR {
 
 
 
-      void DP_ROIList::process (gdouble x, gdouble y, float brush)
+    void DP_ROIList::process (gdouble x, gdouble y, float brush, bool brush3d)
       {
         RefPtr<ROI> roi = row[columns.roi];
         Point pos (roi->mask->interp->R2P (position (x, y)));
@@ -325,69 +325,75 @@ namespace MR {
 
         Pane& pane (Window::Main->pane());
         const Slice::Current S (pane);
-#if 0
-	// this choice should be selectable via the dialog box
-        for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) {
-          if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
-          for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) {
-            if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
-            for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) {
-              if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
-              if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[1]-p[1])*(ima[1]-p[1]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
-                ima.value (set ? 1.0 : 0.0);
-            }
-          }
-        }
-#else
-	const unsigned projection(S.projection);
-	switch (projection) {
-	case 0:
-	  // sagittal
-	  ima.set (0, p[0]);
+
+	if (brush3d)
+	  {
 	  for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
 	    {
 	    if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
 	    for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
 	      {
 	      if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
-	      if ((ima[1]-p[1])*(ima[1]-p[1]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
-		ima.value (set ? 1.0 : 0.0);
+	      for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+		{
+		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
+		if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[1]-p[1])*(ima[1]-p[1]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		  ima.value (set ? 1.0 : 0.0);
+		}
 	      }
 	    }
-	  break;
-	case 1:
-	  // coronal
-	  ima.set (1, p[1]);
-	  for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
-	    {
-	    if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
-	    for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+	  }
+	else
+	  {
+	  const unsigned projection(S.projection);
+	  switch (projection) {
+	  case 0:
+	    // sagittal
+	    ima.set (0, p[0]);
+	    for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
 	      {
-	      if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
-	      if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
-                ima.value (set ? 1.0 : 0.0);
+	      if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
+	      for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
+		{
+		if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
+		if ((ima[1]-p[1])*(ima[1]-p[1]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		  ima.value (set ? 1.0 : 0.0);
+		}
 	      }
-	    }
-	  break;
-	case 2:
-	  // axial
-	  ima.set (2, p[2]);
-	  for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
-	    {
-	    if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
-	    for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+	    break;
+	  case 1:
+	    // coronal
+	    ima.set (1, p[1]);
+	    for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
 	      {
-	      if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
-	      if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[1]-p[1])*(ima[1]-p[1]) < dist)
-		ima.value (set ? 1.0 : 0.0);
+	      if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
+	      for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+		{
+		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
+		if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		  ima.value (set ? 1.0 : 0.0);
+		}
 	      }
-	    }
-	  break;
-	default:
-	  std::cerr << "Unrecognised projection " << projection << " RJBs fault" << std::endl;
-	}
-#endif
-        Window::Main->update (&parent);
+	    break;
+	  case 2:
+	    // axial
+	    ima.set (2, p[2]);
+	    for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
+	      {
+	      if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
+	      for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+		{
+		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
+		if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[1]-p[1])*(ima[1]-p[1]) < dist)
+		  ima.value (set ? 1.0 : 0.0);
+		}
+	      }
+	    break;
+	  default:
+	    std::cerr << "Unrecognised projection " << projection << " RJBs fault" << std::endl;
+	  }
+	  }
+	  Window::Main->update (&parent);
       }
 
 

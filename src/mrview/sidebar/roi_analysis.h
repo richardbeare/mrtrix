@@ -47,9 +47,10 @@ namespace MR {
           bool on_button_release (GdkEventButton* event);
 
         protected:
-          Gtk::CheckButton     show_ROIs;
+	  Gtk::CheckButton     show_ROIs;
           Gtk::Frame           roi_frame, transparency_frame, brush_size_frame;
           Gtk::HScale          transparency, brush_size;
+	  Gtk::CheckButton     brush3d;
           Gtk::ScrolledWindow  roi_scrolled_window;
           DP_ROIList           roi_list;
 
