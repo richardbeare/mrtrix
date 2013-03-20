@@ -384,7 +384,7 @@ namespace MR {
 	    }
 	  break;
 	default:
-	  std::cerr << "Unrecognised projection " << projection " RJBs fault" << std::endl;
+	  std::cerr << "Unrecognised projection " << projection << " RJBs fault" << std::endl;
 	}
 #endif
         Window::Main->update (&parent);
