@@ -51,6 +51,7 @@ namespace MR {
           Gtk::Frame           roi_frame, transparency_frame, brush_size_frame;
           Gtk::HScale          transparency, brush_size;
 	  Gtk::CheckButton     brush3d;
+  	  Gtk::CheckButton     isobrush;
           Gtk::ScrolledWindow  roi_scrolled_window;
           DP_ROIList           roi_list;
 

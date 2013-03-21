@@ -43,8 +43,8 @@ namespace MR {
           virtual ~DP_ROIList();
 
           void draw (int transparency);
-	  bool on_button_press (GdkEventButton* event, float brush, bool brush3d);
-	  bool on_motion (GdkEventMotion* event, float brush, bool brush3d) { if (editing) { process (event->x, event->y, brush, brush3d); return (true); } return (false); };
+	bool on_button_press (GdkEventButton* event, float brush, bool brush3d, bool isobrush);
+	bool on_motion (GdkEventMotion* event, float brush, bool brush3d, bool isobrush) { if (editing) { process (event->x, event->y, brush, brush3d, isobrush); return (true); } return (false); };
           bool on_button_release (GdkEventButton* event) { if (editing) { editing = false; return (true); } return (false); }
 
 	  bool on_key_press (GdkEventKey* event);
@@ -84,7 +84,7 @@ namespace MR {
           void on_clear ();
           void on_tick (const String& path);
 
-  	  void process (gdouble x, gdouble y, float brush, bool brush3d);
+	void process (gdouble x, gdouble y, float brush, bool brush3d, bool isobrush);
           void floodfill(gint x, gint y);
           Point position (gdouble x, gdouble y);
 

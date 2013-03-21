@@ -291,7 +291,7 @@ namespace MR {
 
       void DP_ROIList::on_tick (const String& path) { Window::Main->update (&parent); }
       
-    bool DP_ROIList::on_button_press (GdkEventButton* event, float brush, bool brush3d) 
+    bool DP_ROIList::on_button_press (GdkEventButton* event, float brush, bool brush3d, bool isobrush) 
       {
         Gtk::TreeModel::iterator iter = get_selection()->get_selected();
         if (!iter) return (false);
@@ -307,7 +307,7 @@ namespace MR {
         set = state == GDK_SHIFT_MASK;
         editing = true;
 
-        process (event->x, event->y, brush, brush3d);
+        process (event->x, event->y, brush, brush3d, isobrush);
         return (true);
       }
 
@@ -439,7 +439,7 @@ namespace MR {
       Window::Main->update (&parent);
     }
 
-    void DP_ROIList::process (gdouble x, gdouble y, float brush, bool brush3d)
+    void DP_ROIList::process (gdouble x, gdouble y, float brush, bool brush3d, bool isobrush)
       {
         RefPtr<ROI> roi = row[columns.roi];
         Point pos (roi->mask->interp->R2P (position (x, y)));
@@ -447,23 +447,39 @@ namespace MR {
         MR::Image::Position ima (*roi->mask->image);
         int p[] = { round (pos[0]), round(pos[1]), round(pos[2]) };
         int e = ceil(brush/2.0);
+	int e0(e), e1(e), e2(e);
         float dist = (brush*brush)/4.0;
+	float Sc0(1), Sc1(1), Sc2(1);
+	if (isobrush)
+	  {
+	  // interpret size as mm
+	  float v0 = ima.vox(0);
+	  float v1 = ima.vox(1);
+	  float v2 = ima.vox(2);
+
+	  e0 = ceil(e/v0);
+	  e1 = ceil(e/v1);
+	  e2 = ceil(e/v2);
+	  Sc0=(v0*v0);
+	  Sc1=(v1*v1);
+	  Sc2=(v2*v2);
+	  }
 
         Pane& pane (Window::Main->pane());
         const Slice::Current S (pane);
 
 	if (brush3d)
 	  {
-	  for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
+	  for (ima.set (2, p[2]-e2); ima[2] <= p[2]+e2; ima.inc(2)) 
 	    {
 	    if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
-	    for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
+	    for (ima.set (1, p[1]-e1); ima[1] <= p[1]+e1; ima.inc(1)) 
 	      {
 	      if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
-	      for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+	      for (ima.set (0, p[0]-e0); ima[0] <= p[0]+e0; ima.inc(0)) 
 		{
 		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
-		if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[1]-p[1])*(ima[1]-p[1]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		if ((ima[0]-p[0])*(ima[0]-p[0])*Sc0 + (ima[1]-p[1])*(ima[1]-p[1])*Sc1 + (ima[2]-p[2])*(ima[2]-p[2])*Sc2 < dist)
 		  ima.value (set ? 1.0 : 0.0);
 		}
 	      }
@@ -476,13 +492,13 @@ namespace MR {
 	  case 0:
 	    // sagittal
 	    ima.set (0, p[0]);
-	    for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
+	    for (ima.set (2, p[2]-e2); ima[2] <= p[2]+e2; ima.inc(2)) 
 	      {
 	      if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
-	      for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
+	      for (ima.set (1, p[1]-e1); ima[1] <= p[1]+e1; ima.inc(1)) 
 		{
 		if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
-		if ((ima[1]-p[1])*(ima[1]-p[1]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		if (Sc1*(ima[1]-p[1])*(ima[1]-p[1]) + Sc2*(ima[2]-p[2])*(ima[2]-p[2]) < dist)
 		  ima.value (set ? 1.0 : 0.0);
 		}
 	      }
@@ -490,13 +506,13 @@ namespace MR {
 	  case 1:
 	    // coronal
 	    ima.set (1, p[1]);
-	    for (ima.set (2, p[2]-e); ima[2] <= p[2]+e; ima.inc(2)) 
+	    for (ima.set (2, p[2]-e2); ima[2] <= p[2]+e2; ima.inc(2)) 
 	      {
 	      if (ima[2] < 0 || ima[2] >= ima.dim(2)) continue;
-	      for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+	      for (ima.set (0, p[0]-e0); ima[0] <= p[0]+e0; ima.inc(0)) 
 		{
 		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
-		if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		if (Sc0*(ima[0]-p[0])*(ima[0]-p[0]) + Sc2*(ima[2]-p[2])*(ima[2]-p[2]) < dist)
 		  ima.value (set ? 1.0 : 0.0);
 		}
 	      }
@@ -504,13 +520,13 @@ namespace MR {
 	  case 2:
 	    // axial
 	    ima.set (2, p[2]);
-	    for (ima.set (1, p[1]-e); ima[1] <= p[1]+e; ima.inc(1)) 
+	    for (ima.set (1, p[1]-e1); ima[1] <= p[1]+e1; ima.inc(1)) 
 	      {
 	      if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
-	      for (ima.set (0, p[0]-e); ima[0] <= p[0]+e; ima.inc(0)) 
+	      for (ima.set (0, p[0]-e0); ima[0] <= p[0]+e0; ima.inc(0)) 
 		{
 		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
-		if ((ima[0]-p[0])*(ima[0]-p[0]) + (ima[1]-p[1])*(ima[1]-p[1]) < dist)
+		if (Sc0*(ima[0]-p[0])*(ima[0]-p[0]) + Sc1*(ima[1]-p[1])*(ima[1]-p[1]) < dist)
 		  ima.value (set ? 1.0 : 0.0);
 		}
 	      }
