@@ -84,8 +84,9 @@ namespace MR {
           void on_clear ();
           void on_tick (const String& path);
 
-	void process (gdouble x, gdouble y, float brush, bool brush3d, bool isobrush);
+	  void process (gdouble x, gdouble y, float brush, bool brush3d, bool isobrush);
           void floodfill(gint x, gint y);
+	  void copyslice(gint offset);
           Point position (gdouble x, gdouble y);
 
           void load (RefPtr<MR::Image::Object> image);

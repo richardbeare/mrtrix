@@ -325,22 +325,36 @@ namespace MR {
 	    // determine where we are
 	    gint x0=0, y0=0;
 	    gdk_window_at_pointer(&x0, &y0);
-	    editing=true;
-	    // flood fill
 	    row = *iter;
 	    bool show = row[columns.show];
 	    if (!show) return (false);
+	    editing=true;
+	    // flood fill
 	    floodfill(x0,y0);
 	    editing = false;
 	    }
 	    return(true);
 	    break;
 	  case GDK_KEY_N | GDK_KEY_n:
-	    std::cout << "Copy next slice" << std::endl;
+	    {
+	    row = *iter;
+	    bool show = row[columns.show];
+	    if (!show) return (false);
+	    editing=true;
+	    copyslice(1);
+	    editing=false;
+	    }
 	    return(true);
 	    break;
 	  case GDK_KEY_P | GDK_KEY_p:
-	    std::cout << "Copy previous slice" << std::endl;
+  	    {
+	    row = *iter;
+	    bool show = row[columns.show];
+	    if (!show) return (false);
+	    editing=true;
+	    copyslice(-1);
+	    editing=false;
+	    }
 	    return(true);
 	    break;
 	  case GDK_KEY_Z | GDK_KEY_z:
@@ -363,6 +377,62 @@ namespace MR {
 	  }
 	return(false);
       }
+    
+    void DP_ROIList::copyslice(gint offset)
+    {
+      RefPtr<ROI> roi = row[columns.roi];
+      // figure out our current slice
+      Point pos (roi->mask->interp->R2P (position (0, 0)));
+      MR::Image::Position ima (*roi->mask->image);
+      MR::Image::Position imb (*roi->mask->image);
+      int p[] = { round (pos[0]), round(pos[1]), round(pos[2]) };
+
+      Pane& pane (Window::Main->pane());
+      const Slice::Current S (pane);
+      unsigned projection(S.projection);
+
+      int sourceslice =  p[projection] + offset;
+      // don't do anything if the source slice is invalid
+      if ((sourceslice < 0) || (sourceslice >= ima.dim(projection))) 
+	{
+	std::cout << "Slice copy : out of range" << std::endl;
+	return;
+	}
+      unsigned ax1=0, ax2=1;
+      switch(projection)
+	{
+	case 0:
+	  ax1=1; ax2=2;
+	  break;
+	case 1:
+	  ax1=0; ax2=2;
+	  break;
+	case 2:
+	  ax1=0; ax2=1;
+	  break;
+	default:
+	  break;
+	}
+      // ima points to current slice
+      ima.set(projection, p[projection]);
+      ima.set(ax1, 0);
+      ima.set(ax2, 0);
+
+      // imb points to the source slice
+      imb.set(projection, sourceslice);
+      imb.set(ax1, 0);
+      imb.set(ax2, 0);
+      int R, C;
+      for (R=0, imb.set(ax1, 0), ima.set(ax1, 0); R<ima.dim(ax1); R++, ima.inc(ax1), imb.inc(ax1))
+	{
+	for (C=0, imb.set(ax2, 0), ima.set(ax2, 0); C<ima.dim(ax2); C++, ima.inc(ax2), imb.inc(ax2))
+	  {
+	  ima.value(imb.value());
+	  }
+	}
+      Window::Main->update (&parent);
+
+    }
 
     void DP_ROIList::floodfill(gint x, gint y)
     {
