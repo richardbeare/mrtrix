@@ -73,15 +73,17 @@ namespace MR {
 
       ROIAnalysis::~ROIAnalysis () {  }
 
-
-
       void ROIAnalysis::draw () { if (show_ROIs.get_active()) roi_list.draw ((int) transparency.get_value()); }
       void ROIAnalysis::on_change () { Window::Main->update (this); }
 
-    bool ROIAnalysis::on_button_press (GdkEventButton* event) { return (roi_list.on_button_press (event, brush_size.get_value(), brush3d.get_active())); }
+      bool ROIAnalysis::on_button_press (GdkEventButton* event) { return (roi_list.on_button_press (event, brush_size.get_value(), brush3d.get_active())); }
       bool ROIAnalysis::on_motion (GdkEventMotion* event) { return (roi_list.on_motion (event, brush_size.get_value(), brush3d.get_active())); }
       bool ROIAnalysis::on_button_release (GdkEventButton* event) { return (roi_list.on_button_release (event)); }
 
+      bool ROIAnalysis::on_key_press (GdkEventKey* event)	
+      {
+	return(roi_list.on_key_press (event));
+      }
 
 
     }

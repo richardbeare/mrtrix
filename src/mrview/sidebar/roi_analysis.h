@@ -45,7 +45,7 @@ namespace MR {
           bool on_button_press (GdkEventButton* event);
           bool on_motion (GdkEventMotion* event);
           bool on_button_release (GdkEventButton* event);
-
+ 	  bool on_key_press (GdkEventKey* event);
         protected:
 	  Gtk::CheckButton     show_ROIs;
           Gtk::Frame           roi_frame, transparency_frame, brush_size_frame;

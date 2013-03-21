@@ -30,6 +30,8 @@
 #include "mrview/window.h"
 #include "dialog/file.h"
 
+#include <queue>
+
 namespace MR {
   namespace Viewer {
     namespace SideBar {
@@ -297,6 +299,7 @@ namespace MR {
         if (state != GDK_SHIFT_MASK && 
             state != ( GDK_SHIFT_MASK | CTRL_CMD_MASK ))
           return (false);
+
         row = *iter;
         bool show = row[columns.show];
         if (!show) return (false);
@@ -309,15 +312,138 @@ namespace MR {
       }
 
 
+      bool DP_ROIList::on_key_press (GdkEventKey* event)	
+      {
+        Gtk::TreeModel::iterator iter = get_selection()->get_selected();
+        if (!iter) return (false);
+	// ignore releases
+	if (event->type == GDK_KEY_RELEASE) return (false);
+	switch (event->keyval)
+	  {
+	  case GDK_KEY_F|GDK_KEY_f:
+	    {
+	    // determine where we are
+	    gint x0=0, y0=0;
+	    gdk_window_at_pointer(&x0, &y0);
+	    editing=true;
+	    // flood fill
+	    row = *iter;
+	    bool show = row[columns.show];
+	    if (!show) return (false);
+	    floodfill(x0,y0);
+	    editing = false;
+	    }
+	    return(true);
+	    break;
+	  case GDK_KEY_N | GDK_KEY_n:
+	    std::cout << "Copy next slice" << std::endl;
+	    return(true);
+	    break;
+	  case GDK_KEY_P | GDK_KEY_p:
+	    std::cout << "Copy previous slice" << std::endl;
+	    return(true);
+	    break;
+	  case GDK_KEY_Z | GDK_KEY_z:
+	    if (event->state & CTRL_CMD_MASK)
+	      {
+	      std::cout << "Undo!" << std::endl;
+	      }
+	    return(true);
+	    break;
+	  case GDK_KEY_V | GDK_KEY_v:
+	    if (event->state & CTRL_CMD_MASK)
+	      {
+	      std::cout << "Redo!" << std::endl;
+	      }
 
+	    return(true);
+	    break;
+	  default:
+	    break;
+	  }
+	return(false);
+      }
 
+    void DP_ROIList::floodfill(gint x, gint y)
+    {
+      
+      RefPtr<ROI> roi = row[columns.roi];
+      Point pos (roi->mask->interp->R2P (position (x, y)));
+      MR::Image::Position ima (*roi->mask->image);
+      int p[] = { round (pos[0]), round(pos[1]), round(pos[2]) };
+      Pane& pane (Window::Main->pane());
+      const Slice::Current S (pane);
+      unsigned projection(S.projection);
 
+      // set the position we are starting from
+      ima.set(0, p[0]);
+      ima.set(1, p[1]);
+      ima.set(2, p[2]);
+      // should we adapt to be flood delete too??
+      float bgvalue = ima.value();
+      float fillvalue = !bgvalue;
+      {
 
+      // we are only flooding in 2D, so pick which axes this
+      // corresponds to.
+      unsigned ax1=0, ax2=1;
+      switch(projection)
+	{
+	case 0:
+	  ax1=1; ax2=2;
+	  break;
+	case 1:
+	  ax1=0; ax2=2;
+	  break;
+	case 2:
+	  ax1=0; ax2=1;
+	  break;
+	default:
+	  break;
+	}
+      // set the other values
+      // standard flooding algorithm :
+      // put voxel on queue
+      // Pop top of queue: visit neighbours : label unlabelled
+      // neighbours and return place them on queue
+      std::queue<MR::Image::Position> fqueue;
+      ima.value(fillvalue);
+      fqueue.push(ima);
+
+      unsigned offset1[8]={-1, -1, -1, 0, 0, 1, 1, 1};
+      unsigned offset2[8]={-1, 0, 1, -1, 1, -1, 0, 1};
+
+      while (!fqueue.empty())
+	{
+	MR::Image::Position idx = fqueue.front();
+	fqueue.pop();
+	for (unsigned P=0;P<8;P++)
+	  {
+	  MR::Image::Position nidx = idx;	
+	  // set up the neighbour
+	  int a1 = idx[ax1]+offset1[P];
+	  int a2 = idx[ax2]+offset2[P];
+	  if (!((a1 < 0) || (a2 < 0) || (a1 >= idx.dim(ax1)) || (a2 >= idx.dim(ax2)) ) )
+	      {
+	      nidx.set(ax1, a1);
+	      nidx.set(ax2, a2);
+	      if (nidx.value()==bgvalue)
+		{
+		nidx.value(fillvalue);
+		fqueue.push(nidx);
+		}
+	      }
+	    }
+	  }
+	}
+      Window::Main->update (&parent);
+    }
 
     void DP_ROIList::process (gdouble x, gdouble y, float brush, bool brush3d)
       {
         RefPtr<ROI> roi = row[columns.roi];
         Point pos (roi->mask->interp->R2P (position (x, y)));
+
         MR::Image::Position ima (*roi->mask->image);
         int p[] = { round (pos[0]), round(pos[1]), round(pos[2]) };
         int e = ceil(brush/2.0);

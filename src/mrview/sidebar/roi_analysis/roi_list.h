@@ -47,6 +47,8 @@ namespace MR {
 	  bool on_motion (GdkEventMotion* event, float brush, bool brush3d) { if (editing) { process (event->x, event->y, brush, brush3d); return (true); } return (false); };
           bool on_button_release (GdkEventButton* event) { if (editing) { editing = false; return (true); } return (false); }
 
+	  bool on_key_press (GdkEventKey* event);
+
         protected:
           const ROIAnalysis& parent;
           bool  set, editing;
@@ -83,6 +85,7 @@ namespace MR {
           void on_tick (const String& path);
 
   	  void process (gdouble x, gdouble y, float brush, bool brush3d);
+          void floodfill(gint x, gint y);
           Point position (gdouble x, gdouble y);
 
           void load (RefPtr<MR::Image::Object> image);
