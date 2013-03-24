@@ -61,6 +61,9 @@ namespace MR {
 
         Gtk::CellRendererToggle* tick = dynamic_cast<Gtk::CellRendererToggle*> (get_column_cell_renderer (tick_column_index));
         tick->signal_toggled().connect (sigc::mem_fun (*this, &DP_ROIList::on_tick));
+	
+	MaxUndoSize=10;
+
       }
 
 
@@ -306,7 +309,8 @@ namespace MR {
 
         set = state == GDK_SHIFT_MASK;
         editing = true;
-
+	// setup undo buffer
+	//processUndoBuff.clear();
         process (event->x, event->y, brush, brush3d, isobrush);
         return (true);
       }
@@ -358,16 +362,38 @@ namespace MR {
 	    return(true);
 	    break;
 	  case GDK_KEY_Z | GDK_KEY_z:
-	    if (event->state & CTRL_CMD_MASK)
+	    if (event->state && CTRL_CMD_MASK)
 	      {
-	      std::cout << "Undo!" << std::endl;
+	      if (UndoQueue.size() > 0)
+		{
+		std::cout << "Undo!" << std::endl;
+		EdVecType ThisUndo = UndoQueue.front();
+		UndoQueue.pop_front();
+		ApplyUndo(ThisUndo);
+		RedoQueue.push_front(ThisUndo);
+		}
+	      else
+		{
+		std::cout << "No undo available" << std::endl;
+		}
 	      }
 	    return(true);
 	    break;
-	  case GDK_KEY_V | GDK_KEY_v:
-	    if (event->state & CTRL_CMD_MASK)
+	  case GDK_KEY_Z | GDK_KEY_Z:
+	    if (event->state && CTRL_CMD_MASK && GDK_SHIFT_MASK)
 	      {
-	      std::cout << "Redo!" << std::endl;
+	      if (RedoQueue.size() > 0)
+		{
+		std::cout << "Redo!" << std::endl;
+		EdVecType ThisUndo = RedoQueue.front();
+		RedoQueue.pop_front();
+		ApplyUndo(ThisUndo);
+		UndoQueue.push_front(ThisUndo);
+		}
+	      else
+		{
+		std::cout << "No redo available" << std::endl;
+		}
 	      }
 
 	    return(true);
@@ -377,7 +403,34 @@ namespace MR {
 	  }
 	return(false);
       }
-    
+
+    void DP_ROIList::ApplyUndo(EdVecType &EV)
+    {
+      editing=true;
+      RefPtr<ROI> roi = row[columns.roi];
+      MR::Image::Position ima (*roi->mask->image);
+      for (unsigned k=0; k < EV.size(); k++)
+	{
+	bool newval=EV[k].value;
+	ima.setoffset(EV[k].offset);
+	EV[k].value = ima.value();
+	ima.value(newval);
+	}
+      editing=false;
+      Window::Main->update (&parent);
+    }
+
+    void DP_ROIList::AddToUndo(EdVecType EV)
+    {
+      UndoQueue.push_front(EV);
+      // as soon as something is edited, we clear the redo list
+      RedoQueue.clear();
+      if (UndoQueue.size() > MaxUndoSize)
+	{
+	UndoQueue.pop_back();
+	}
+    }
+
     void DP_ROIList::copyslice(gint offset)
     {
       RefPtr<ROI> roi = row[columns.roi];
@@ -423,15 +476,40 @@ namespace MR {
       imb.set(ax1, 0);
       imb.set(ax2, 0);
       int R, C;
+      EdVecType UndoVec;
+
       for (R=0, imb.set(ax1, 0), ima.set(ax1, 0); R<ima.dim(ax1); R++, ima.inc(ax1), imb.inc(ax1))
 	{
 	for (C=0, imb.set(ax2, 0), ima.set(ax2, 0); C<ima.dim(ax2); C++, ima.inc(ax2), imb.inc(ax2))
 	  {
+	  AddVox(ima, UndoVec);
 	  ima.value(imb.value());
 	  }
 	}
+      AddToUndo(UndoVec);
       Window::Main->update (&parent);
 
+    }
+
+    void DP_ROIList::AddVox(MR::Image::Position ima, EdVecType &EV)
+    {
+      EdVox ee;
+      ee.value=ima.value();
+      ee.offset=ima.getoffset();
+      EV.push_back(ee);
+    }
+
+    void DP_ROIList::AddVox(MR::Image::Position ima, EdVecType &EV, float value)
+    {
+      EdVox ee;
+      ee.value=ima.value();
+      if (ee.value != value)
+	{
+	// only push if it has changed.
+	// specifically for drawing
+	ee.offset=ima.getoffset();
+	EV.push_back(ee);
+	}
     }
 
     void DP_ROIList::floodfill(gint x, gint y)
@@ -444,6 +522,8 @@ namespace MR {
       Pane& pane (Window::Main->pane());
       const Slice::Current S (pane);
       unsigned projection(S.projection);
+
+      EdVecType UndoInfo;
 
       // set the position we are starting from
       ima.set(0, p[0]);
@@ -477,6 +557,7 @@ namespace MR {
       // Pop top of queue: visit neighbours : label unlabelled
       // neighbours and return place them on queue
       std::queue<MR::Image::Position> fqueue;
+      AddVox(ima, UndoInfo);
       ima.value(fillvalue);
       fqueue.push(ima);
 
@@ -499,6 +580,7 @@ namespace MR {
 	      nidx.set(ax2, a2);
 	      if (nidx.value()==bgvalue)
 		{
+		AddVox(nidx, UndoInfo);
 		nidx.value(fillvalue);
 		fqueue.push(nidx);
 		}
@@ -506,6 +588,7 @@ namespace MR {
 	    }
 	  }
 	}
+      AddToUndo(UndoInfo);
       Window::Main->update (&parent);
     }
 
@@ -550,7 +633,10 @@ namespace MR {
 		{
 		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
 		if ((ima[0]-p[0])*(ima[0]-p[0])*Sc0 + (ima[1]-p[1])*(ima[1]-p[1])*Sc1 + (ima[2]-p[2])*(ima[2]-p[2])*Sc2 < dist)
+		  {
+		  AddVox(ima, processUndoBuff, set ? 1.0 : 0.0);
 		  ima.value (set ? 1.0 : 0.0);
+		  }
 		}
 	      }
 	    }
@@ -569,7 +655,10 @@ namespace MR {
 		{
 		if (ima[1] < 0 || ima[1] >= ima.dim(1)) continue;
 		if (Sc1*(ima[1]-p[1])*(ima[1]-p[1]) + Sc2*(ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		  {
+		  AddVox(ima, processUndoBuff, set ? 1.0 : 0.0);
 		  ima.value (set ? 1.0 : 0.0);
+		  }
 		}
 	      }
 	    break;
@@ -583,7 +672,10 @@ namespace MR {
 		{
 		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
 		if (Sc0*(ima[0]-p[0])*(ima[0]-p[0]) + Sc2*(ima[2]-p[2])*(ima[2]-p[2]) < dist)
+		  {
+		  AddVox(ima, processUndoBuff, set ? 1.0 : 0.0);
 		  ima.value (set ? 1.0 : 0.0);
+		  }
 		}
 	      }
 	    break;
@@ -597,7 +689,10 @@ namespace MR {
 		{
 		if (ima[0] < 0 || ima[0] >= ima.dim(0)) continue;
 		if (Sc0*(ima[0]-p[0])*(ima[0]-p[0]) + Sc1*(ima[1]-p[1])*(ima[1]-p[1]) < dist)
+		  {
+		  AddVox(ima, processUndoBuff, set ? 1.0 : 0.0);
 		  ima.value (set ? 1.0 : 0.0);
+		  }
 		}
 	      }
 	    break;
