@@ -63,7 +63,7 @@ readTck <- function(filename, processTrack=processTrackDefault)
     hd <- readTckHeader(filename)
     fp <- file(filename, open='rb')
     seek(fp, where=hd$offset)
-    pbuff <- 1024 * 3
+    pbuff <- 8192 * 3
     prevdat <- NULL
     EOF <- FALSE
     res <- NULL
